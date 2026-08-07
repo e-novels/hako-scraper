@@ -73,13 +73,13 @@
           },
           {
             "id": "selectgenres",
-            "type": "select",
+            "type": "multi-select",
             "label": "Thể loại chọn",
             "optionsMethod": "getFilterOptions"
           },
           {
             "id": "rejectgenres",
-            "type": "select",
+            "type": "multi-select",
             "label": "Thể loại loại trừ",
             "optionsMethod": "getFilterOptions"
           },

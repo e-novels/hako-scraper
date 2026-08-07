@@ -1,12 +1,8 @@
-const BASE_URL = "https://docln.sbs"
+const BASE_URL = 'https://docln.sbs'
 
+import { doclnClient } from './client'
 export { extractArticleParagraphs } from './html'
-import { assertTemplateBookDetail, assertTemplateChapter, assertTemplateSearchResponse } from './validation'
-import { network } from '../utilities'
-
-function endpoint(pathname: string): string {
-  return new URL(pathname, BASE_URL).toString()
-}
+import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
   return {
@@ -75,12 +71,12 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
       return getFilterOptions(request)
     },
     async getBookDetail({ bookRef }) {
-      const response = await network.fetchJson<TemplateBookDetail>(endpoint(`/api/books/${bookRef}`))
+      const response = await doclnClient.fetchJson<TemplateBookDetail>(`/api/books/${bookRef}`)
       assertTemplateBookDetail(response)
       return toBookDetail(response)
     },
     async getChapter({ chapterRef }) {
-      const response = await network.fetchJson<TemplateChapter>(endpoint(`/api/chapters/${chapterRef}`))
+      const response = await doclnClient.fetchJson<TemplateChapter>(`/api/chapters/${chapterRef}`)
       assertTemplateChapter(response)
       return toChapter(response)
     }

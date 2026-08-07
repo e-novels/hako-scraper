@@ -1,5 +1,6 @@
 import { parseHTML } from 'linkedom'
-import { network, logger } from '../utilities'
+import { logger } from '../utilities'
+import { doclnClient } from './client'
 
 const BASE_URL = 'https://docln.sbs'
 
@@ -126,7 +127,7 @@ export async function getFilterOptions(
   if (fieldId === 'selectgenres' || fieldId === 'rejectgenres') {
     let categories = HAKO_CATEGORIES
     try {
-      const html = await network.fetchText(new URL('/tim-kiem-nang-cao', BASE_URL).toString())
+      const html = await doclnClient.fetchText('/tim-kiem-nang-cao')
       const parsed = parseCategoriesFromHtml(html)
       if (parsed.length > 0) categories = parsed
     } catch {
@@ -255,6 +256,6 @@ export async function executeSearch(
   const searchUrl = url.toString()
   await logger.info(`Search URL: ${searchUrl}`)
 
-  const html = await network.fetchText(searchUrl)
+  const html = await doclnClient.fetchText(searchUrl)
   return parseSearchResultsHtml(html, page, pageSize)
 }

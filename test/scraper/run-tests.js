@@ -110,11 +110,14 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.ok(filterOptionsRes.options.some(opt => opt.label === 'Action'))
 
     // Test search
-    const searchResult = await handlers.search({ filters: { query: 'fixture' }, page: 1, pageSize: 20 })
+    const searchResult = await handlers.search({ filters: { query: 'fixture', selectgenres: ['1', '2'], rejectgenres: ['3', '4'] }, page: 1, pageSize: 20 })
     assert.equal(searchResult.items[0].book_id, 101)
     assert.equal(searchResult.items[0].book_name, 'Test Book')
     assert.equal(searchResult.items[0].book_image, 'https://docln.sbs/img/cover.jpg')
-    assert.equal(new URL(requests[requests.length - 1]).searchParams.get('title'), 'fixture')
+    const lastSearchUrl = new URL(requests[requests.length - 1])
+    assert.equal(lastSearchUrl.searchParams.get('title'), 'fixture')
+    assert.equal(lastSearchUrl.searchParams.get('selectgenres'), '1,2')
+    assert.equal(lastSearchUrl.searchParams.get('rejectgenres'), '3,4')
 
     assert.equal((await handlers.getBookDetail({ bookRef: '101' })).volumes[0].chapters[0].chapter_id, 301)
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
