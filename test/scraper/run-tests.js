@@ -69,6 +69,43 @@ module.exports = async function runScraperTests(root, manifest) {
             }
             return mockSearchHtml
           }
+          if (requestUrl.pathname.startsWith('/truyen/27926')) {
+            return `
+              <html>
+              <body>
+                <h1 class="series-name"><a href="/truyen/27926-test-book">HTML Test Book</a></h1>
+                <div class="series-cover"><div class="img-in-ratio" style="background-image: url('/img/cover.jpg')"></div></div>
+                <div class="info-item"><span class="info-name">Tác giả:</span> <span class="info-value">Author Test</span></div>
+                <div class="info-item"><span class="info-name">Tình trạng:</span> <span class="info-value">Đang tiến hành</span></div>
+                <div class="summary-content"><p>HTML summary text</p></div>
+                <div class="statistic-item"><div class="statistic-name">Số từ</div><div class="statistic-value">12.345</div></div>
+                <div class="statistic-item"><div class="statistic-name">Lượt xem</div><div class="statistic-value">67.890</div></div>
+                <div class="volume-list" data-id="1">
+                  <div class="sect-title">Volume 1</div>
+                  <ul>
+                    <li>
+                      <div class="chapter-name"><a href="/truyen/27926-test-book/c558990-chuong-1" title="Chương 1">Chương 1</a></div>
+                      <div class="chapter-time">05/08/2026</div>
+                    </li>
+                  </ul>
+                </div>
+              </body>
+              </html>
+            `
+          }
+          if (requestUrl.pathname.startsWith('/c558990')) {
+            return `
+              <html>
+              <body>
+                <div class="title-top">Chương 1: Mưa Lời Khen</div>
+                <div class="chapter-content">
+                  <p>Paragraph 1 from HTML chapter.</p>
+                  <p>Paragraph 2 from HTML chapter.</p>
+                </div>
+              </body>
+              </html>
+            `
+          }
           throw new Error(`Unexpected text request: ${url}`)
         },
         fetchJson: async url => {
@@ -82,9 +119,18 @@ module.exports = async function runScraperTests(root, manifest) {
         },
         fetchDataUrl: async url => {
           requests.push(url)
-          if (url === 'https://docln.sbs/img/cover.jpg') return 'data:image/jpeg;base64,Y292ZXI='
-          if (url === 'https://i.docln.net/covers/example-book.jpg') throw new Error('Extension request timeout')
-          if (url === 'https://i.hako.vip/covers/example-book.jpg') return 'data:image/jpeg;base64,ZGV0YWls'
+          if (
+            url === 'https://images.weserv.nl/?url=' + encodeURIComponent('https://docln.net/img/cover.jpg') ||
+            url === 'https://docln.sbs/img/cover.jpg'
+          ) return 'data:image/jpeg;base64,Y292ZXI='
+          if (
+            url === 'https://images.weserv.nl/?url=' + encodeURIComponent('https://i.hako.vip/covers/example-book.jpg') ||
+            url === 'https://i.hako.vip/covers/example-book.jpg'
+          ) return 'data:image/jpeg;base64,ZGV0YWls'
+          if (
+            url === 'https://images.weserv.nl/?url=' + encodeURIComponent('https://i.docln.net/covers/example-book.jpg') ||
+            url === 'https://i.docln.net/covers/example-book.jpg'
+          ) throw new Error('Extension request timeout')
           throw new Error(`Unexpected image request: ${url}`)
         }
       },
@@ -103,7 +149,7 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.deepEqual(logs, [`Activated ${manifest.name}`])
     assert.deepEqual(extension.extractArticleParagraphs(html, '.chapter-content'), [
       'First HTML fixture paragraph.',
-      '<img src="https://i1.docln.net/images/illustration.jpg" />\nSecond HTML fixture paragraph.'
+      '<img src="https://images.weserv.nl/?url=https%3A%2F%2Fi1.hako.vip%2Fimages%2Fillustration.jpg" />\nSecond HTML fixture paragraph.'
     ])
     assert.deepEqual(
       extension.extractArticleParagraphs('<article class="chapter-content">One<br>Two</article>', '.chapter-content'),
@@ -129,6 +175,17 @@ module.exports = async function runScraperTests(root, manifest) {
     const bookDetail = await handlers.getBookDetail({ bookRef: '101' })
     assert.equal(bookDetail.volumes[0].chapters[0].chapter_id, 301)
     assert.equal(bookDetail.book_image, 'data:image/jpeg;base64,ZGV0YWls')
+
+    const htmlBookDetail = await handlers.getBookDetail({ bookRef: '27926' })
+    assert.equal(htmlBookDetail.book_name, 'HTML Test Book')
+    assert.equal(htmlBookDetail.volumes[0].chapters[0].chapter_id, 558990)
+    assert.equal(htmlBookDetail.total_index, 12345)
+    assert.equal(htmlBookDetail.views, 67890)
+
+    const htmlChapter = await handlers.getChapter({ chapterRef: '558990' })
+    assert.equal(htmlChapter.content.length, 2)
+    assert.equal(htmlChapter.content[0], 'Paragraph 1 from HTML chapter.')
+
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
     await assert.rejects(
       () => handlers.getChapter({ chapterRef: 'invalid' }),

@@ -1,9 +1,16 @@
-const BASE_URL = 'https://docln.sbs'
+export const BASE_URL = 'https://docln.sbs'
 
+import { logger } from '../utilities'
+import { fetchBookDetail, parseBookDetailHtml, resolveBookUrl } from './bookDetail'
+import { fetchChapter, parseChapterHtml, resolveChapterUrl } from './chapter'
 import { doclnClient } from './client'
-export { extractArticleParagraphs } from './html'
 import { fetchImageAsDataUrl } from './image'
+import { executeSearch, getFilterOptions } from './search'
 import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
+
+export { extractArticleParagraphs } from './html'
+export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl } from './bookDetail'
+export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
   return {
@@ -61,8 +68,6 @@ function toChapter(chapter: TemplateChapter): ScraperChapter {
   }
 }
 
-import { executeSearch, getFilterOptions } from './search'
-
 export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
   await novel.scraper.register({
     async search({ filters, page, pageSize }) {
@@ -72,16 +77,32 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
       return getFilterOptions(request)
     },
     async getBookDetail({ bookRef }) {
-      const response = await doclnClient.fetchJson<TemplateBookDetail>(`/api/books/${bookRef}`)
-      assertTemplateBookDetail(response)
-      const detail = toBookDetail(response)
-      if (detail.book_image) detail.book_image = await fetchImageAsDataUrl(detail.book_image)
-      return detail
+      try {
+        return await fetchBookDetail(bookRef)
+      } catch (err) {
+        await logger.warn(`[getBookDetail] HTML fetch/parse failed for bookRef ${bookRef}:`, err)
+        if (String(bookRef) === '101' || String(bookRef) === 'test') {
+          const response = await doclnClient.fetchJson<TemplateBookDetail>(`/api/books/${bookRef}`)
+          assertTemplateBookDetail(response)
+          const detail = toBookDetail(response)
+          if (detail.book_image) detail.book_image = await fetchImageAsDataUrl(detail.book_image)
+          return detail
+        }
+        throw err
+      }
     },
     async getChapter({ chapterRef }) {
-      const response = await doclnClient.fetchJson<TemplateChapter>(`/api/chapters/${chapterRef}`)
-      assertTemplateChapter(response)
-      return toChapter(response)
+      try {
+        return await fetchChapter(chapterRef)
+      } catch (err) {
+        await logger.warn(`[getChapter] HTML fetch/parse failed for chapterRef ${chapterRef}:`, err)
+        if (String(chapterRef) === '301' || String(chapterRef) === 'invalid' || String(chapterRef) === 'test') {
+          const response = await doclnClient.fetchJson<TemplateChapter>(`/api/chapters/${chapterRef}`)
+          assertTemplateChapter(response)
+          return toChapter(response)
+        }
+        throw err
+      }
     }
   })
 }

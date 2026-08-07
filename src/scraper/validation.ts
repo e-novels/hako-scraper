@@ -25,6 +25,14 @@ function requirePositiveInteger(value: unknown, path: string): void {
   if (!isPositiveSafeInteger(value)) fail(path, 'expected a positive safe integer.')
 }
 
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function requireNonNegativeInteger(value: unknown, path: string): void {
+  if (!isNonNegativeSafeInteger(value)) fail(path, 'expected a non-negative safe integer.')
+}
+
 function requireDate(value: unknown, path: string): void {
   requireString(value, path)
   if (Number.isNaN(Date.parse(value as string))) fail(path, 'expected an ISO-compatible date.')
@@ -33,8 +41,8 @@ function requireDate(value: unknown, path: string): void {
 function requireImageUrl(value: unknown, path: string): void {
   requireString(value, path, true)
   if (value === '') return
-  if (typeof value === 'string' && dataImagePattern.test(value)) {
-    if (value.length > maxDataImageLength) fail(path, 'data image exceeds the 7 MB limit.')
+  if (dataImagePattern.test(value as string)) {
+    if ((value as string).length > maxDataImageLength) fail(path, 'data image exceeds the 7 MB limit.')
     return
   }
   try {
@@ -62,12 +70,8 @@ function requirePagination(value: unknown, path: string): void {
   requirePositiveInteger(pagination.page, `${path}.page`)
   requirePositiveInteger(pagination.pageSize, `${path}.pageSize`)
   if (typeof pagination.hasNextPage !== 'boolean') fail(`${path}.hasNextPage`, 'expected a boolean.')
-  if (pagination.totalItems !== undefined && (!Number.isSafeInteger(pagination.totalItems) || typeof pagination.totalItems !== 'number' || pagination.totalItems < 0)) {
-    fail(`${path}.totalItems`, 'expected a non-negative safe integer.')
-  }
-  if (pagination.totalPages !== undefined && (!Number.isSafeInteger(pagination.totalPages) || typeof pagination.totalPages !== 'number' || pagination.totalPages < 0)) {
-    fail(`${path}.totalPages`, 'expected a non-negative safe integer.')
-  }
+  if (pagination.totalItems !== undefined) requireNonNegativeInteger(pagination.totalItems, `${path}.totalItems`)
+  if (pagination.totalPages !== undefined) requireNonNegativeInteger(pagination.totalPages, `${path}.totalPages`)
 }
 
 export function assertTemplateSearchResponse(value: unknown): asserts value is TemplateSearchResponse {

@@ -1,4 +1,6 @@
 import { parseHTML } from 'linkedom'
+import { logger } from '../utilities'
+import { normalizeImageUrl, wrapWeservUrl } from './image'
 
 function normalizeParagraph(value: string | null): string {
   return (value ?? '').replace(/\s+/g, ' ').trim()
@@ -9,14 +11,14 @@ function extractParagraphContent(element: Element): string {
   const text = normalizeParagraph(element.textContent)
   if (!image) return text
 
-  let source = image.getAttribute('src') || image.getAttribute('data-src') || image.getAttribute('data-original') || image.getAttribute('data-bg') || ''
-  source = source.trim()
-  if (!source) return text
-  if (source.startsWith('//')) source = `https:${source}`
-  else if (/^i\d*\.(hako\.vip|docln\.net)\//i.test(source)) source = `https://${source}`
-  source = source.replace(/^(https?:\/\/i\d*)\.hako\.vip\//i, '$1.docln.net/')
+  const rawSource = (image.getAttribute('src') || image.getAttribute('data-src') || image.getAttribute('data-original') || image.getAttribute('data-bg') || '').trim()
+  if (!rawSource) return text
 
-  const imageHtml = `<img src="${source}" />`
+  const source = normalizeImageUrl(rawSource)
+  const weservSource = wrapWeservUrl(source)
+  logger.info(`[HTMLImage] Chapter image extracted: Original="${source}" -> Weserv="${weservSource}"`).catch(() => {})
+
+  const imageHtml = `<img src="${weservSource}" />`
   return text ? `${imageHtml}\n${text}` : imageHtml
 }
 

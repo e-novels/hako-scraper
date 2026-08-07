@@ -1,9 +1,8 @@
 import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
-import { doclnClient } from './client'
+import { saveBookSlug } from './bookDetail'
+import { BASE_URL, doclnClient } from './client'
 import { fetchImageAsDataUrl } from './image'
-
-const BASE_URL = 'https://docln.sbs'
 
 export const HAKO_CATEGORIES: Array<{ label: string; value: string }> = [
   { label: 'Action', value: '1' },
@@ -93,7 +92,6 @@ export function parseCategoriesFromHtml(html: string): Array<{ label: string; va
     const options: Array<{ label: string; value: string }> = []
     const seenValues = new Set<string>()
 
-    // Look for checkbox inputs, options, or genre_label elements inside search-advance
     const elements = document.querySelectorAll('.genre_label, [data-genre-id], .search-advance input[type="checkbox"], .search-advance_genre, .search-advance option')
     elements.forEach(el => {
       const val = el.getAttribute('value') || el.getAttribute('data-genre-id') || el.getAttribute('data-id')
@@ -149,11 +147,9 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
   const items: ScraperBookSummary[] = []
   const seenIds = new Set<number>()
 
-  // Look for top-level cards/items in search results
   const itemNodes = Array.from(document.querySelectorAll('.thumb-item-flow, .thumb-section-flow, .series-detail, .series-item'))
 
   for (const node of itemNodes) {
-    // Target series title (.series-title a or .series-title) exclusively
     const titleEl = node.querySelector('.series-title a, .series-title')
     if (!titleEl) continue
 
@@ -168,8 +164,8 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     if (!bookId || seenIds.has(bookId)) continue
 
     seenIds.add(bookId)
+    saveBookSlug(bookId, href)
 
-    // Image extraction
     let bookImage = ''
     const imgEl = node.querySelector('.img-in-ratio, img')
     if (imgEl) {
@@ -183,7 +179,6 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     }
     bookImage = resolveUrl(bookImage)
 
-    // Authors extraction
     const authors: Array<{ author_id: number; author_name: string }> = []
     const authorEl = node.querySelector('.series-owner, .author, .thumb-detail .author')
     if (authorEl) {
@@ -201,12 +196,9 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     })
   }
 
-  // Parse pagination
-  let totalPages: number | undefined
-  let hasNextPage = false
-
   const pageLinks = Array.from(document.querySelectorAll('.pagination a, .pagination_wrap a, .paging_simple a'))
   let maxPage = page
+  let hasNextPage = false
 
   for (const link of pageLinks) {
     const href = link.getAttribute('href') || ''
@@ -222,9 +214,7 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     }
   }
 
-  if (maxPage > 1) {
-    totalPages = maxPage
-  }
+  const totalPages = maxPage > 1 ? maxPage : undefined
 
   return {
     items,
@@ -263,4 +253,4 @@ export async function executeSearch(
     if (item.book_image) item.book_image = await fetchImageAsDataUrl(item.book_image)
   }))
   return response
-}
+}
