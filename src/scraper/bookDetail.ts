@@ -339,12 +339,10 @@ export async function resolveBookUrl(bookRef: string): Promise<string> {
 
   if (bookSlugMap.has(cleanId)) {
     const cached = bookSlugMap.get(cleanId)!
-    await logger.info(`[BookDetail] Resolved slug for ID ${cleanId} from memory cache: ${cached}`)
     return cached
   }
 
   try {
-    await logger.info(`[BookDetail] Searching slug for bookRef ${cleanId} via /tim-kiem-nang-cao...`)
     const searchHtml = await doclnClient.fetchText(`/tim-kiem-nang-cao?title=${encodeURIComponent(cleanId)}`)
     const { document } = parseHTML(searchHtml)
     const links = Array.from(document.querySelectorAll('a[href*="/truyen/"]'))
@@ -353,7 +351,6 @@ export async function resolveBookUrl(bookRef: string): Promise<string> {
       const match = href.match(/\/truyen\/(\d+)/)
       if (match && match[1] === cleanId && href.includes('-')) {
         saveBookSlug(cleanId, href)
-        await logger.info(`[BookDetail] Found resolved URL for bookRef ${cleanId}: ${href}`)
         return href
       }
     }
@@ -372,7 +369,6 @@ export async function resolveBookRatingUrl(bookRef: string): Promise<string> {
 
 export async function fetchBookDetail(bookRef: string): Promise<ScraperBookDetail> {
   const targetPath = await resolveBookUrl(bookRef)
-  await logger.info(`[BookDetail] Fetching book detail for ref: ${bookRef} -> ${targetPath}`)
   const html = await doclnClient.fetchText(targetPath)
   const detail = parseBookDetailHtml(html, bookRef)
   if (detail.book_image) {

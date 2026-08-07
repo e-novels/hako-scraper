@@ -111,7 +111,6 @@ export function parseReviewsHtml(html: string): ScraperReview[] {
 
 export async function fetchReviews(bookRef: string): Promise<ScraperReview[]> {
   const ratingUrl = await resolveBookRatingUrl(bookRef)
-  await logger.info(`[Rating] Fetching reviews for ref: ${bookRef} -> ${ratingUrl}`)
   const html = await doclnClient.fetchText(ratingUrl)
   const reviews = parseReviewsHtml(html)
 

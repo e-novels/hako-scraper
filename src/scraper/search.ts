@@ -243,10 +243,8 @@ export async function executeSearch(
   url.searchParams.set('status', formatFilterParam(filters.status) || '0')
   const sapxepVal = formatFilterParam(filters.sapxep)
   url.searchParams.set('sapxep', (sapxepVal === 'az' || sapxepVal === 'default') ? '' : sapxepVal)
-  url.searchParams.set('seriestype', formatFilterParam(filters.seriestype) || '0')
+  url.searchParams.set('page', String(page))
   const searchUrl = url.toString()
-  await logger.info(`Search URL: ${searchUrl}`)
-
   const html = await doclnClient.fetchText(searchUrl)
   const response = parseSearchResultsHtml(html, page, pageSize)
   await Promise.all(response.items.map(async (item) => {

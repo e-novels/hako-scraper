@@ -5,6 +5,7 @@ import { fetchBookDetail, parseBookDetailHtml, resolveBookRatingUrl, resolveBook
 import { fetchChapter, parseChapterHtml, resolveChapterUrl } from './chapter'
 import { doclnClient } from './client'
 import { fetchImageAsDataUrl } from './image'
+import { fetchComments, parseCommentGroupHtml } from './comment'
 import { fetchReviews, parseReviewsHtml } from './rating'
 import { executeSearch, getFilterOptions } from './search'
 import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
@@ -13,8 +14,10 @@ export { extractArticleParagraphs } from './html'
 export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './bookDetail'
 export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
 export { parseReviewsHtml, fetchReviews } from './rating'
+export { parseCommentGroupHtml, fetchComments } from './comment'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
+
   return {
     book_id: book.id,
     book_name: book.title,
@@ -108,6 +111,9 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
     },
     async getReviews({ bookRef }) {
       return fetchReviews(bookRef)
+    },
+    async getComments(request) {
+      return fetchComments(request)
     }
   })
 }

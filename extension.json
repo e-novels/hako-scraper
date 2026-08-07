@@ -60,7 +60,8 @@
         "getBookDetail",
         "getChapter",
         "getFilterOptions",
-        "getReviews"
+        "getReviews",
+        "getComments"
       ],
       "search": {
         "pageSize": 20,

@@ -22,7 +22,7 @@ module.exports = async function runScraperTests(root, manifest) {
     manifest.network.allowedHosts.includes(new URL(manifest.contributes.scraper.site.baseUrl).hostname),
     true
   )
-  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['getBookDetail', 'getChapter', 'getFilterOptions', 'getReviews', 'search'])
+  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['getBookDetail', 'getChapter', 'getComments', 'getFilterOptions', 'getReviews', 'search'])
 
   async function smokeBundle(filename) {
     const entryPath = path.join(root, 'dist', filename)
@@ -98,6 +98,7 @@ module.exports = async function runScraperTests(root, manifest) {
           if (requestUrl.pathname.startsWith('/truyen/27926')) {
             return `
               <html>
+              <head><meta name="csrf-token" content="mock-csrf-token"></head>
               <body>
                 <h1 class="series-name"><a href="/truyen/27926-test-book">HTML Test Book</a></h1>
                 <div class="series-cover"><div class="img-in-ratio" style="background-image: url('/img/cover.jpg')"></div></div>
@@ -122,6 +123,7 @@ module.exports = async function runScraperTests(root, manifest) {
           if (requestUrl.pathname.startsWith('/c558990')) {
             return `
               <html>
+              <head><meta name="csrf-token" content="mock-csrf-token"></head>
               <body>
                 <div class="title-top">Chương 1: Mưa Lời Khen</div>
                 <div class="chapter-content">
@@ -134,10 +136,23 @@ module.exports = async function runScraperTests(root, manifest) {
           }
           throw new Error(`Unexpected text request: ${url}`)
         },
-        fetchJson: async url => {
+        fetchJson: async (url, options) => {
           requests.push(url)
           const requestUrl = new URL(url)
           const pathname = requestUrl.pathname
+          if (pathname === '/comment/ajax_paging') {
+            return {
+              status: 'success',
+              html: '<div class="ln-comment-group"><div id="ln-comment-3086692" class="ln-comment-item mt-3 clear" data-comment="3086692" data-parent="3086692"><a class="ln-username" href="/thanh-vien/10395">kaguki</a><div class="ln-comment-content long-text">Bình luận test</div><time class="timeago" datetime="2025-11-11T05:59:21+07:00">11-11-2025</time><span class="likecount">5</span></div><div class="ln-comment-reply"><div id="ln-comment-3127671" class="ln-comment-item mt-3 clear" data-comment="3127671" data-parent="3086692"><a class="ln-username" href="/thanh-vien/92265">Reltih Lieh</a><div class="ln-comment-content long-text">Reply test</div><time class="timeago" datetime="2025-12-17T00:55:41+07:00">17-12-2025</time><span class="likecount">1</span></div></div></div>'
+            }
+          }
+          if (pathname === '/comment/fetch_reply') {
+            return {
+              status: 'success',
+              html: '<div id="ln-comment-3127672" class="ln-comment-item mt-3 clear" data-comment="3127672" data-parent="3086692"><a class="ln-username" href="/thanh-vien/92266">Extra User</a><div class="ln-comment-content long-text">Extra reply test</div><time class="timeago" datetime="2025-12-18T00:55:41+07:00">18-12-2025</time><span class="likecount">0</span></div>',
+              remaining: 0
+            }
+          }
           if (pathname === '/api/books/101') return detail
           if (pathname === '/api/chapters/301') return chapter
           if (pathname === '/api/chapters/invalid') return { ...chapter, paragraphs: ['  '] }
@@ -219,6 +234,19 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.equal(reviews[0].user_name, 'Miyazumiiiiiii')
     assert.equal(reviews[0].value, 4)
     assert.equal(reviews[0].message, 'nội dung ổn')
+
+    const commentsRes = await handlers.getComments({ bookRef: '27926' })
+    assert.equal(commentsRes.data.length, 1)
+    assert.equal(commentsRes.data[0].comment_id, 3086692)
+    assert.equal(commentsRes.data[0].user_name, 'kaguki')
+    assert.equal(commentsRes.data[0].message, 'Bình luận test')
+    assert.equal(commentsRes.data[0].total_like, 5)
+    assert.equal(commentsRes.data[0].replies.length, 2)
+    assert.equal(commentsRes.data[0].replies[0].comment_id, 3127671)
+    assert.equal(commentsRes.data[0].replies[0].user_name, 'Reltih Lieh')
+    assert.equal(commentsRes.data[0].replies[1].comment_id, 3127672)
+    assert.equal(commentsRes.data[0].replies[1].user_name, 'Extra User')
+
 
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
     await assert.rejects(

@@ -66,7 +66,6 @@ export async function resolveChapterUrl(chapterRef: string): Promise<string> {
 
 export async function fetchChapter(chapterRef: string): Promise<ScraperChapter> {
   const targetPath = await resolveChapterUrl(chapterRef)
-  await logger.info(`[Chapter] Fetching chapter for ref: ${chapterRef} -> ${targetPath}`)
   const html = await doclnClient.fetchText(targetPath)
   return parseChapterHtml(html, chapterRef)
 }

@@ -23,21 +23,34 @@ export class DoclnClient {
 
   public async fetchText(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    await logger.info(`[DoclnClient] Fetching text from: ${targetUrl}`)
-    return network.fetchText(targetUrl, { headers })
+    return network.fetchText(targetUrl, { headers, credentials: 'include' })
   }
 
   public async fetchJson<T = unknown>(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<T> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    await logger.info(`[DoclnClient] Fetching JSON from: ${targetUrl}`)
-    return network.fetchJson<T>(targetUrl, { headers })
+    return network.fetchJson<T>(targetUrl, { headers, credentials: 'include' })
   }
 
   public async fetchDataUrl(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    return network.fetchDataUrl(targetUrl, { headers })
+    return network.fetchDataUrl(targetUrl, { headers, credentials: 'include' })
+  }
+
+  public async postForm<T = unknown>(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<T> {
+    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, {
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'X-Requested-With': 'XMLHttpRequest',
+      ...customHeaders
+    })
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(formData)) {
+      params.set(key, value)
+    }
+    const body = params.toString()
+    return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
   }
 }
 
 export const doclnClient = new DoclnClient()
+
 
