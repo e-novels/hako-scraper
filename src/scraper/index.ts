@@ -1,4 +1,4 @@
-const BASE_URL = 'https://example.com'
+const BASE_URL = "https://docln.sbs"
 
 export { extractArticleParagraphs } from './html'
 import { assertTemplateBookDetail, assertTemplateChapter, assertTemplateSearchResponse } from './validation'

@@ -1,9 +1,9 @@
 {
-  "name": "example-extension",
-  "displayName": "Example Extension",
-  "publisher": "your-publisher",
+  "name": "hako-scraper",
+  "displayName": "Hako",
+  "publisher": "hako",
   "version": "0.1.0",
-  "description": "A fixture-backed template for e-novels scraper or theme extensions.",
+  "description": "Search and read books from Hako.",
   "starter": {
     "kind": "scraper"
   },
@@ -22,8 +22,6 @@
   "keywords": [
     "e-novels",
     "scraper",
-    "theme",
-    "template",
     "typescript"
   ],
   "permissions": [
@@ -32,17 +30,17 @@
   ],
   "network": {
     "allowedHosts": [
-      "example.com"
+      "docln.sbs"
     ]
   },
   "contributes": {
     "scraper": {
-      "name": "Example Site",
-      "description": "Replace the placeholder routes and mappers with a source you are allowed to access.",
+      "name": "Hako",
+      "description": "Search and read books from Hako.",
       "version": 2,
       "site": {
-        "name": "Example Site",
-        "baseUrl": "https://example.com"
+        "name": "Hako",
+        "baseUrl": "https://docln.sbs"
       },
       "capabilities": [
         "search",
