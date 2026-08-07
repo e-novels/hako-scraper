@@ -64,18 +64,15 @@ function toChapter(chapter: TemplateChapter): ScraperChapter {
   }
 }
 
+import { executeSearch, getFilterOptions } from './search'
+
 export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
   await novel.scraper.register({
     async search({ filters, page, pageSize }) {
-      const url = new URL(endpoint('/api/books'))
-      const query = typeof filters.query === 'string' ? filters.query : ''
-      url.searchParams.set('query', query)
-      url.searchParams.set('page', String(page))
-      url.searchParams.set('pageSize', String(pageSize))
-
-      const response = await network.fetchJson<TemplateSearchResponse>(url.toString())
-      assertTemplateSearchResponse(response)
-      return { items: response.items.map(toBookSummary), pagination: response.pagination }
+      return executeSearch(filters, page, pageSize)
+    },
+    async getFilterOptions(request) {
+      return getFilterOptions(request)
     },
     async getBookDetail({ bookRef }) {
       const response = await network.fetchJson<TemplateBookDetail>(endpoint(`/api/books/${bookRef}`))

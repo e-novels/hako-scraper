@@ -2,6 +2,8 @@ type ExtensionLogValue = unknown
 
 type ExtensionMaybePromise<T> = T | Promise<T>
 
+type ThemeVariableName = string
+
 interface ExtensionFetchOptions {
   method?: string
   headers?: Record<string, string>

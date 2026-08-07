@@ -36,7 +36,8 @@ try {
     '--display-name', 'Library Source',
     '--publisher', 'independent-dev',
     '--kind', 'scraper',
-    '--base-url', 'https://books.example.org/'
+    '--base-url', 'https://books.example.org/',
+    '--force'
   ]))
   assert.equal(scraper.name, 'library-source')
   assert.deepEqual(scraper.network.allowedHosts, ['books.example.org'])
@@ -69,7 +70,8 @@ try {
     '--name', 'paper-theme',
     '--display-name', 'Paper Theme',
     '--publisher', 'independent-dev',
-    '--kind', 'theme'
+    '--kind', 'theme',
+    '--force'
   ]))
   assert.deepEqual(theme.permissions, ['ui.theme'])
   assert.deepEqual(theme.contributes, {})
@@ -86,7 +88,8 @@ try {
     '--name', 'ai-translator',
     '--display-name', 'AI Translator',
     '--publisher', 'independent-dev',
-    '--kind', 'translator'
+    '--kind', 'translator',
+    '--force'
   ]))
   assert.deepEqual(translator.permissions, ['translate', 'network', 'storage'])
   assert.equal(translator.contributes.translator.name, 'AI Translator')
@@ -102,7 +105,8 @@ try {
     '--display-name', 'My TTS Service',
     '--publisher', 'independent-dev',
     '--kind', 'tts',
-    '--tts-mode', 'process'
+    '--tts-mode', 'process',
+    '--force'
   ]))
   assert.deepEqual(ttsProcess.permissions, ['tts', 'storage'])
   assert.equal(ttsProcess.contributes.tts.mode, 'process')
@@ -118,7 +122,8 @@ try {
     '--display-name', 'My Cloud TTS',
     '--publisher', 'independent-dev',
     '--kind', 'tts',
-    '--tts-mode', 'cloud'
+    '--tts-mode', 'cloud',
+    '--force'
   ]))
   assert.deepEqual(ttsCloud.permissions, ['tts', 'network', 'storage'])
   assert.equal(ttsCloud.contributes.tts.mode, 'cloud')
@@ -130,7 +135,8 @@ try {
     '--display-name', 'My WASM TTS',
     '--publisher', 'independent-dev',
     '--kind', 'tts',
-    '--tts-mode', 'wasm'
+    '--tts-mode', 'wasm',
+    '--force'
   ]))
   assert.deepEqual(ttsWasm.permissions, ['tts', 'storage'])
   assert.equal(ttsWasm.contributes.tts.mode, 'wasm')

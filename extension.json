@@ -45,7 +45,8 @@
       "capabilities": [
         "search",
         "getBookDetail",
-        "getChapter"
+        "getChapter",
+        "getFilterOptions"
       ],
       "search": {
         "pageSize": 20,
@@ -53,7 +54,74 @@
           {
             "id": "query",
             "type": "text",
-            "label": "Search"
+            "label": "Từ khóa / Tên truyện"
+          },
+          {
+            "id": "title",
+            "type": "text",
+            "label": "Tên truyện"
+          },
+          {
+            "id": "author",
+            "type": "text",
+            "label": "Tác giả"
+          },
+          {
+            "id": "illustrator",
+            "type": "text",
+            "label": "Họa sĩ"
+          },
+          {
+            "id": "selectgenres",
+            "type": "select",
+            "label": "Thể loại chọn",
+            "optionsMethod": "getFilterOptions"
+          },
+          {
+            "id": "rejectgenres",
+            "type": "select",
+            "label": "Thể loại loại trừ",
+            "optionsMethod": "getFilterOptions"
+          },
+          {
+            "id": "status",
+            "type": "select",
+            "label": "Tình trạng",
+            "defaultValue": "0",
+            "options": [
+              { "label": "Tất cả", "value": "0" },
+              { "label": "Đang tiến hành", "value": "1" },
+              { "label": "Tạm ngưng", "value": "2" },
+              { "label": "Đã hoàn thành", "value": "3" }
+            ]
+          },
+          {
+            "id": "seriestype",
+            "type": "select",
+            "label": "Loại truyện",
+            "defaultValue": "0",
+            "options": [
+              { "label": "Tất cả", "value": "0" },
+              { "label": "Truyện dịch", "value": "1" },
+              { "label": "AI dịch", "value": "2" },
+              { "label": "Sáng tác", "value": "3" }
+            ]
+          },
+          {
+            "id": "sapxep",
+            "type": "select",
+            "label": "Sắp xếp theo",
+            "defaultValue": "az",
+            "options": [
+              { "label": "Tên A-Z", "value": "az" },
+              { "label": "Tên Z-A", "value": "tentruyenza" },
+              { "label": "Mới cập nhật", "value": "capnhat" },
+              { "label": "Mới đăng", "value": "truyenmoi" },
+              { "label": "Lượt xem", "value": "top" },
+              { "label": "Top tháng", "value": "topthang" },
+              { "label": "Theo dõi", "value": "theodoi" },
+              { "label": "Số từ", "value": "sotu" }
+            ]
           }
         ]
       }

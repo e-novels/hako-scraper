@@ -22,7 +22,7 @@ module.exports = async function runScraperTests(root, manifest) {
     manifest.network.allowedHosts.includes(new URL(manifest.contributes.scraper.site.baseUrl).hostname),
     true
   )
-  assert.deepEqual(manifest.contributes.scraper.capabilities, ['search', 'getBookDetail', 'getChapter'])
+  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['getBookDetail', 'getChapter', 'getFilterOptions', 'search'])
 
   async function smokeBundle(filename) {
     const entryPath = path.join(root, 'dist', filename)
@@ -33,6 +33,24 @@ module.exports = async function runScraperTests(root, manifest) {
     const requests = []
     let handlers
 
+    const mockSearchHtml = `
+      <div class="search-advance">
+        <div class="search-advance_genre" data-genre-id="1">Action</div>
+        <div class="search-advance_genre" data-genre-id="8">Fantasy</div>
+      </div>
+      <div class="thumb-item-flow">
+        <div class="thumb-wrapper">
+          <div class="thumb_attr series-title"><a href="/truyen/101-test-book" title="Test Book">Test Book</a></div>
+          <div class="img-in-ratio" style="background-image: url('/img/cover.jpg')"></div>
+          <div class="series-owner">Tác giả: Author Test</div>
+        </div>
+      </div>
+      <div class="pagination_wrap">
+        <a href="/tim-kiem-nang-cao?page=1">1</a>
+        <a href="/tim-kiem-nang-cao?page=2">2</a>
+      </div>
+    `
+
     const mockNovel = {
       version: '1.0.0',
       extension: { id: manifest.name },
@@ -42,25 +60,21 @@ module.exports = async function runScraperTests(root, manifest) {
         error: async () => undefined
       },
       network: {
+        fetchText: async url => {
+          requests.push(url)
+          const requestUrl = new URL(url)
+          if (requestUrl.pathname === '/tim-kiem-nang-cao') {
+            if (requestUrl.searchParams.get('title') === 'rate-limited') {
+              throw new Error('Source request failed with HTTP 429.')
+            }
+            return mockSearchHtml
+          }
+          throw new Error(`Unexpected text request: ${url}`)
+        },
         fetchJson: async url => {
           requests.push(url)
           const requestUrl = new URL(url)
           const pathname = requestUrl.pathname
-          if (pathname === '/api/books') {
-            if (requestUrl.searchParams.get('query') === 'invalid') {
-              return { ...searchFixture, items: [{ ...searchFixture.items[0], id: 0 }] }
-            }
-            if (requestUrl.searchParams.get('query') === 'data-image') {
-              return {
-                ...searchFixture,
-                items: [{ ...searchFixture.items[0], image: 'data:image/png;base64,aGVsbG8=' }]
-              }
-            }
-            if (requestUrl.searchParams.get('query') === 'rate-limited') {
-              throw new Error('Source request failed with HTTP 429.')
-            }
-            return searchFixture
-          }
           if (pathname === '/api/books/101') return detail
           if (pathname === '/api/chapters/301') return chapter
           if (pathname === '/api/chapters/invalid') return { ...chapter, paragraphs: ['  '] }
@@ -89,23 +103,27 @@ module.exports = async function runScraperTests(root, manifest) {
       ['One', 'Two']
     )
     assert.deepEqual(Object.keys(handlers).sort(), manifest.contributes.scraper.capabilities.slice().sort())
-    const searchResult = await handlers.search({ filters: { query: 'fixture' }, page: 2, pageSize: 20 })
+
+    // Test getFilterOptions
+    const filterOptionsRes = await handlers.getFilterOptions({ fieldId: 'selectgenres' })
+    assert.ok(filterOptionsRes.options.length > 0)
+    assert.ok(filterOptionsRes.options.some(opt => opt.label === 'Action'))
+
+    // Test search
+    const searchResult = await handlers.search({ filters: { query: 'fixture' }, page: 1, pageSize: 20 })
     assert.equal(searchResult.items[0].book_id, 101)
-    assert.equal(new URL(requests[0]).searchParams.get('query'), 'fixture')
-    const dataImageResult = await handlers.search({ filters: { query: 'data-image' }, page: 1, pageSize: 20 })
-    assert.equal(dataImageResult.items[0].book_image, 'data:image/png;base64,aGVsbG8=')
+    assert.equal(searchResult.items[0].book_name, 'Test Book')
+    assert.equal(searchResult.items[0].book_image, 'https://docln.sbs/img/cover.jpg')
+    assert.equal(new URL(requests[requests.length - 1]).searchParams.get('title'), 'fixture')
+
     assert.equal((await handlers.getBookDetail({ bookRef: '101' })).volumes[0].chapters[0].chapter_id, 301)
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
-    await assert.rejects(
-      () => handlers.search({ filters: { query: 'invalid' }, page: 1, pageSize: 20 }),
-      /search\.items\[0\]\.id/
-    )
     await assert.rejects(
       () => handlers.getChapter({ chapterRef: 'invalid' }),
       /chapter\.paragraphs\[0\]/
     )
     await assert.rejects(
-      () => handlers.search({ filters: { query: 'rate-limited' }, page: 1, pageSize: 20 }),
+      () => handlers.search({ filters: { title: 'rate-limited' }, page: 1, pageSize: 20 }),
       /HTTP 429/
     )
     await extension.deactivate()
