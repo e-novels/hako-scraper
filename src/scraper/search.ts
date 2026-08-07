@@ -1,6 +1,7 @@
 import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
 import { doclnClient } from './client'
+import { fetchImageAsDataUrl } from './image'
 
 const BASE_URL = 'https://docln.sbs'
 
@@ -257,5 +258,9 @@ export async function executeSearch(
   await logger.info(`Search URL: ${searchUrl}`)
 
   const html = await doclnClient.fetchText(searchUrl)
-  return parseSearchResultsHtml(html, page, pageSize)
+  const response = parseSearchResultsHtml(html, page, pageSize)
+  await Promise.all(response.items.map(async (item) => {
+    if (item.book_image) item.book_image = await fetchImageAsDataUrl(item.book_image)
+  }))
+  return response
 }

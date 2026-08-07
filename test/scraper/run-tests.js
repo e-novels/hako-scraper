@@ -79,6 +79,13 @@ module.exports = async function runScraperTests(root, manifest) {
           if (pathname === '/api/chapters/301') return chapter
           if (pathname === '/api/chapters/invalid') return { ...chapter, paragraphs: ['  '] }
           throw new Error(`Unexpected fixture request: ${url}`)
+        },
+        fetchDataUrl: async url => {
+          requests.push(url)
+          if (url === 'https://docln.sbs/img/cover.jpg') return 'data:image/jpeg;base64,Y292ZXI='
+          if (url === 'https://i.docln.net/covers/example-book.jpg') throw new Error('Extension request timeout')
+          if (url === 'https://i.hako.vip/covers/example-book.jpg') return 'data:image/jpeg;base64,ZGV0YWls'
+          throw new Error(`Unexpected image request: ${url}`)
         }
       },
       scraper: { register: async registered => { handlers = registered } },
@@ -96,7 +103,7 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.deepEqual(logs, [`Activated ${manifest.name}`])
     assert.deepEqual(extension.extractArticleParagraphs(html, '.chapter-content'), [
       'First HTML fixture paragraph.',
-      'Second HTML fixture paragraph.'
+      '<img src="https://i1.docln.net/images/illustration.jpg" />\nSecond HTML fixture paragraph.'
     ])
     assert.deepEqual(
       extension.extractArticleParagraphs('<article class="chapter-content">One<br>Two</article>', '.chapter-content'),
@@ -113,13 +120,15 @@ module.exports = async function runScraperTests(root, manifest) {
     const searchResult = await handlers.search({ filters: { query: 'fixture', selectgenres: ['1', '2'], rejectgenres: ['3', '4'] }, page: 1, pageSize: 20 })
     assert.equal(searchResult.items[0].book_id, 101)
     assert.equal(searchResult.items[0].book_name, 'Test Book')
-    assert.equal(searchResult.items[0].book_image, 'https://docln.sbs/img/cover.jpg')
-    const lastSearchUrl = new URL(requests[requests.length - 1])
+    assert.equal(searchResult.items[0].book_image, 'data:image/jpeg;base64,Y292ZXI=')
+    const lastSearchUrl = new URL(requests.find(url => new URL(url).pathname === '/tim-kiem-nang-cao' && new URL(url).searchParams.get('title') === 'fixture'))
     assert.equal(lastSearchUrl.searchParams.get('title'), 'fixture')
     assert.equal(lastSearchUrl.searchParams.get('selectgenres'), '1,2')
     assert.equal(lastSearchUrl.searchParams.get('rejectgenres'), '3,4')
 
-    assert.equal((await handlers.getBookDetail({ bookRef: '101' })).volumes[0].chapters[0].chapter_id, 301)
+    const bookDetail = await handlers.getBookDetail({ bookRef: '101' })
+    assert.equal(bookDetail.volumes[0].chapters[0].chapter_id, 301)
+    assert.equal(bookDetail.book_image, 'data:image/jpeg;base64,ZGV0YWls')
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
     await assert.rejects(
       () => handlers.getChapter({ chapterRef: 'invalid' }),

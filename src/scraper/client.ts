@@ -33,6 +33,13 @@ export class DoclnClient {
     await logger.info(`[DoclnClient] Fetching JSON from: ${targetUrl}`)
     return network.fetchJson<T>(targetUrl, { headers })
   }
+
+  public async fetchDataUrl(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
+    const targetUrl = pathnameOrUrl.startsWith('http') ? pathnameOrUrl : buildEndpointUrl(pathnameOrUrl)
+    const headers = { ...DEFAULT_HEADERS, ...customHeaders }
+    await logger.info(`[DoclnClient] Fetching Data URL from: ${targetUrl}`)
+    return network.fetchDataUrl(targetUrl, { headers })
+  }
 }
 
 export const doclnClient = new DoclnClient()

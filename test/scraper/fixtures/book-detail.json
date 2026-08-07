@@ -1,7 +1,7 @@
 {
   "id": 101,
   "title": "Example Book",
-  "image": "https://example.com/covers/example-book.jpg",
+  "image": "https://i.hako.vip/covers/example-book.jpg",
   "author": { "id": 11, "name": "Example Author" },
   "alternateTitles": ["Example Alternate Title"],
   "description": "A fixture response for extension authors.",

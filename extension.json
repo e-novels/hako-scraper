@@ -30,7 +30,20 @@
   ],
   "network": {
     "allowedHosts": [
-      "docln.sbs"
+      "docln.sbs",
+      "docln.net",
+      "i.docln.net",
+      "i1.docln.net",
+      "i2.docln.net",
+      "i3.docln.net",
+      "i.hako.vip",
+      "i1.hako.vip",
+      "i2.hako.vip",
+      "i3.hako.vip",
+      "ln.hako.vip",
+      "c1.hako.vip",
+      "cdn.docln.net",
+      "images.weserv.nl"
     ]
   },
   "contributes": {

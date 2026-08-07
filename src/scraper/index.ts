@@ -2,6 +2,7 @@ const BASE_URL = 'https://docln.sbs'
 
 import { doclnClient } from './client'
 export { extractArticleParagraphs } from './html'
+import { fetchImageAsDataUrl } from './image'
 import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
@@ -73,7 +74,9 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
     async getBookDetail({ bookRef }) {
       const response = await doclnClient.fetchJson<TemplateBookDetail>(`/api/books/${bookRef}`)
       assertTemplateBookDetail(response)
-      return toBookDetail(response)
+      const detail = toBookDetail(response)
+      if (detail.book_image) detail.book_image = await fetchImageAsDataUrl(detail.book_image)
+      return detail
     },
     async getChapter({ chapterRef }) {
       const response = await doclnClient.fetchJson<TemplateChapter>(`/api/chapters/${chapterRef}`)
