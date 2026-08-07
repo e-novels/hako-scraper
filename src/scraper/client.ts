@@ -35,7 +35,6 @@ export class DoclnClient {
 
   public async fetchDataUrl(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    await logger.info(`[DoclnClient] Fetching Data URL from: ${targetUrl}`)
     return network.fetchDataUrl(targetUrl, { headers })
   }
 }

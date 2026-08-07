@@ -22,7 +22,7 @@ module.exports = async function runScraperTests(root, manifest) {
     manifest.network.allowedHosts.includes(new URL(manifest.contributes.scraper.site.baseUrl).hostname),
     true
   )
-  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['getBookDetail', 'getChapter', 'getFilterOptions', 'search'])
+  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['getBookDetail', 'getChapter', 'getFilterOptions', 'getReviews', 'search'])
 
   async function smokeBundle(filename) {
     const entryPath = path.join(root, 'dist', filename)
@@ -68,6 +68,32 @@ module.exports = async function runScraperTests(root, manifest) {
               throw new Error('Source request failed with HTTP 429.')
             }
             return mockSearchHtml
+          }
+          if (requestUrl.pathname.endsWith('/danh-gia')) {
+            return `
+              <html>
+              <body>
+                <div wire:snapshot="{&quot;data&quot;:{&quot;review&quot;:[null,{&quot;class&quot;:&quot;App\\\\Models\\\\SeriesReview&quot;,&quot;key&quot;:1536}]}}" class="mt-5">
+                  <div class="flex">
+                    <img class="rounded-full" src="/img/noava.png">
+                    <a class="ln-username" href="/thanh-vien/148873">Miyazumiiiiiii</a>
+                    <span class="text-yellow-400"><i class="fas fa-star"></i></span>
+                    <span class="text-yellow-400"><i class="fas fa-star"></i></span>
+                    <span class="text-yellow-400"><i class="fas fa-star"></i></span>
+                    <span class="text-yellow-400"><i class="fas fa-star"></i></span>
+                    <span class="text-gray-300"><i class="fas fa-star"></i></span>
+                    <time class="timeago" datetime="2023-07-12T08:24:14+07:00">3 năm</time>
+                  </div>
+                  <div class="ln-comment-group">
+                    <div class="ln-comment-wrapper">
+                      <div class="ln-comment-content long-text">nội dung ổn</div>
+                      <div class="comment_see_more expand none">Xem thêm</div>
+                    </div>
+                  </div>
+                </div>
+              </body>
+              </html>
+            `
           }
           if (requestUrl.pathname.startsWith('/truyen/27926')) {
             return `
@@ -185,6 +211,14 @@ module.exports = async function runScraperTests(root, manifest) {
     const htmlChapter = await handlers.getChapter({ chapterRef: '558990' })
     assert.equal(htmlChapter.content.length, 2)
     assert.equal(htmlChapter.content[0], 'Paragraph 1 from HTML chapter.')
+
+    const reviews = await handlers.getReviews({ bookRef: '27926' })
+    assert.equal(reviews.length, 1)
+    assert.equal(reviews[0].interaction_id, 1536)
+    assert.equal(reviews[0].user_id, 148873)
+    assert.equal(reviews[0].user_name, 'Miyazumiiiiiii')
+    assert.equal(reviews[0].value, 4)
+    assert.equal(reviews[0].message, 'nội dung ổn')
 
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
     await assert.rejects(

@@ -364,6 +364,12 @@ export async function resolveBookUrl(bookRef: string): Promise<string> {
   return `/truyen/${cleanId}`
 }
 
+export async function resolveBookRatingUrl(bookRef: string): Promise<string> {
+  const bookUrl = await resolveBookUrl(bookRef)
+  const cleanUrl = bookUrl.replace(/\/+$/, '').replace(/\/danh-gia$/i, '')
+  return `${cleanUrl}/danh-gia`
+}
+
 export async function fetchBookDetail(bookRef: string): Promise<ScraperBookDetail> {
   const targetPath = await resolveBookUrl(bookRef)
   await logger.info(`[BookDetail] Fetching book detail for ref: ${bookRef} -> ${targetPath}`)

@@ -1,5 +1,4 @@
 import { parseHTML } from 'linkedom'
-import { logger } from '../utilities'
 import { normalizeImageUrl, wrapWeservUrl } from './image'
 
 function normalizeParagraph(value: string | null): string {
@@ -16,7 +15,6 @@ function extractParagraphContent(element: Element): string {
 
   const source = normalizeImageUrl(rawSource)
   const weservSource = wrapWeservUrl(source)
-  logger.info(`[HTMLImage] Chapter image extracted: Original="${source}" -> Weserv="${weservSource}"`).catch(() => {})
 
   const imageHtml = `<img src="${weservSource}" />`
   return text ? `${imageHtml}\n${text}` : imageHtml

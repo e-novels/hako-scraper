@@ -1,16 +1,18 @@
 export const BASE_URL = 'https://docln.sbs'
 
 import { logger } from '../utilities'
-import { fetchBookDetail, parseBookDetailHtml, resolveBookUrl } from './bookDetail'
+import { fetchBookDetail, parseBookDetailHtml, resolveBookRatingUrl, resolveBookUrl } from './bookDetail'
 import { fetchChapter, parseChapterHtml, resolveChapterUrl } from './chapter'
 import { doclnClient } from './client'
 import { fetchImageAsDataUrl } from './image'
+import { fetchReviews, parseReviewsHtml } from './rating'
 import { executeSearch, getFilterOptions } from './search'
 import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
 
 export { extractArticleParagraphs } from './html'
-export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl } from './bookDetail'
+export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './bookDetail'
 export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
+export { parseReviewsHtml, fetchReviews } from './rating'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
   return {
@@ -103,6 +105,9 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
         }
         throw err
       }
+    },
+    async getReviews({ bookRef }) {
+      return fetchReviews(bookRef)
     }
   })
 }
