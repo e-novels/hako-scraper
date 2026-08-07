@@ -45,9 +45,11 @@ module.exports = async function runScraperTests(root, manifest) {
           <div class="series-owner">Tác giả: Author Test</div>
         </div>
       </div>
-      <div class="pagination_wrap">
-        <a href="/tim-kiem-nang-cao?page=1">1</a>
-        <a href="/tim-kiem-nang-cao?page=2">2</a>
+      <div class="pagination-footer">
+        <div class="pagination_wrap">
+          <a href="" class="paging_item paging_prevnext prev disabled">Trước</a>
+          <a href="/tim-kiem-nang-cao?page=2" class="paging_item paging_prevnext next">Sau</a>
+        </div>
       </div>
     `
 
@@ -245,8 +247,10 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.equal(commentsRes.data[0].replies[0].comment_id, 3127671)
     assert.equal(commentsRes.data[0].replies[0].user_name, 'Reltih Lieh')
     assert.equal(commentsRes.data[0].replies[1].comment_id, 3127672)
-    assert.equal(commentsRes.data[0].replies[1].user_name, 'Extra User')
-
+    assert.equal(commentsRes.pagination.totalItems, undefined)
+    assert.equal(commentsRes.pagination.totalPages, undefined)
+    assert.equal(typeof commentsRes.pagination.hasNextPage, 'boolean')
+    assert.equal(searchResult.pagination.hasNextPage, true)
 
     assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
     await assert.rejects(

@@ -214,6 +214,11 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     }
   }
 
+  const nextEl = document.querySelector('.paging_item.next, .paging_prevnext.next, .pagination_wrap .next, .pagination .next, a.next')
+  if (nextEl) {
+    hasNextPage = !nextEl.classList.contains('disabled')
+  }
+
   const totalPages = maxPage > 1 ? maxPage : undefined
 
   return {

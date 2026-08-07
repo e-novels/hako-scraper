@@ -315,27 +315,35 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
     }
   }
 
+  let hasNextPage = comments.length >= 10
+  if (jsonResp.html) {
+    const { document } = parseHTML(`<div>${jsonResp.html}</div>`)
+    const nextEl = document.querySelector('.paging_item.next, .paging_prevnext.next, .pagination_wrap .next, .pagination .next, a.next')
+    if (nextEl) {
+      hasNextPage = !nextEl.classList.contains('disabled')
+    } else {
+      const pageLinks = Array.from(document.querySelectorAll('.pagination a, .pagination_wrap a, .paging_simple a'))
+      for (const link of pageLinks) {
+        const href = link.getAttribute('href') || ''
+        const pageMatch = href.match(/page=(\d+)/)
+        if (pageMatch && parseInt(pageMatch[1], 10) > page) {
+          hasNextPage = true
+          break
+        }
+      }
+    }
+  }
+
   const pagination: ScraperPagination = {
     page,
     pageSize: comments.length || 10,
-    totalItems: comments.length,
-    totalPages: comments.length >= 10 ? page + 1 : page,
-    hasNextPage: comments.length >= 10
+    hasNextPage
   }
 
-  const response = Object.assign(comments, {
-    room_id: typeId || 0,
-    roomId: typeId || 0,
-    data: comments,
-    items: comments,
-    comments: comments,
-    pagination,
-    page,
-    pageSize: pagination.pageSize,
-    totalItems: pagination.totalItems,
-    totalPages: pagination.totalPages,
-    hasNextPage: pagination.hasNextPage
-  })
+  await logger.info('[Comment] Pagination:', pagination)
 
-  return response as unknown as ScraperCommentsPage
+  return {
+    data: comments,
+    pagination
+  } as unknown as ScraperCommentsPage
 }
