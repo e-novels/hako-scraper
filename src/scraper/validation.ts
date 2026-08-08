@@ -89,9 +89,7 @@ export function assertTemplateBookDetail(value: unknown): asserts value is Templ
     if (!Array.isArray(book.alternateTitles)) fail('book.alternateTitles', 'expected an array.')
     book.alternateTitles.forEach((title, index) => requireString(title, `book.alternateTitles[${index}]`))
   }
-  if (book.status !== undefined && (typeof book.status !== 'string' || !statuses.has(book.status))) {
-    fail('book.status', 'expected a supported status.')
-  }
+  if (book.status !== undefined) requireString(book.status, 'book.status', true)
   if (book.description !== undefined) requireString(book.description, 'book.description', true)
 
   book.volumes.forEach((volume, volumeIndex) => {

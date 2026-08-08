@@ -45,9 +45,9 @@ function processContentImages(contentEl: Element | null): string {
   return contentEl.textContent?.trim() || contentEl.innerHTML?.trim() || ''
 }
 
-function parseSingleCommentItem(itemEl: Element, roomId: number | string = 0): ScraperComment {
+function parseSingleCommentItem(itemEl: Element, _roomId: number | string = 0): ScraperComment {
   const commentIdAttr = itemEl.getAttribute('data-comment') || itemEl.getAttribute('id') || '0'
-  const comment_id = parseInteger(commentIdAttr)
+  const socket_id = parseInteger(commentIdAttr) || commentIdAttr
 
   const usernameEl = itemEl.querySelector('.ln-username')
   const user_name = usernameEl?.textContent?.trim() || 'Vô danh'
@@ -63,7 +63,7 @@ function parseSingleCommentItem(itemEl: Element, roomId: number | string = 0): S
   const avatar = wrapWeservUrl(normalizedAvatar)
 
   const contentEl = itemEl.querySelector('.ln-comment-content')
-  const message = processContentImages(contentEl)
+  const content = processContentImages(contentEl)
 
   const timeEl = itemEl.querySelector('time.timeago')
   const dateAttr = timeEl?.getAttribute('datetime') || timeEl?.getAttribute('title') || timeEl?.textContent || ''
@@ -78,32 +78,25 @@ function parseSingleCommentItem(itemEl: Element, roomId: number | string = 0): S
   const chapLinkEl = itemEl.querySelector('span.text-sm a[href*="/c"]')
   const chapter_ref = chapLinkEl?.getAttribute('href') || null
   const chapter_title = chapLinkEl?.textContent?.trim() || null
+  const chapterMatch = chapter_ref ? chapter_ref.match(/\/c(\d+)/) || chapter_ref.match(/(\d+)/) : null
+  const chapter_id = chapterMatch ? parseInt(chapterMatch[1], 10) : (chapter_ref || undefined)
 
-  const commentObj = {
-    id: comment_id,
-    comment_id,
-    room_id: roomId || comment_id || 0,
-    roomId: roomId || comment_id || 0,
+  const commentObj: ScraperComment = {
+    socket_id,
     user_id,
-    userId: user_id,
     user_name,
-    userName: user_name,
     avatar,
-    user_avatar: avatar,
-    message,
-    content: message,
+    content,
     created_at,
-    createdAt: created_at,
     total_like,
-    like_count: total_like,
     total_reply: 0,
-    reply_count: 0,
     is_like,
     replies: [],
-    ...(chapter_ref ? { chapter_ref, chapter_title } : {})
+    ...(chapter_id !== undefined ? { chapter_id } : {}),
+    ...(chapter_title ? { chapter_name: chapter_title } : {})
   }
 
-  return commentObj as unknown as ScraperComment
+  return commentObj
 }
 
 export function parseCommentGroupHtml(html: string, roomId: number | string = 0): ScraperComment[] {
@@ -133,7 +126,6 @@ export function parseCommentGroupHtml(html: string, roomId: number | string = 0)
       const replies: ScraperComment[] = replyItems.map(item => parseSingleCommentItem(item, roomId))
       parentComment.replies = replies
       parentComment.total_reply = replies.length
-      ;(parentComment as any).reply_count = replies.length
     }
 
     comments.push(parentComment)
@@ -170,7 +162,7 @@ export async function fetchRepliesForComment(
   let offset = parentComment.replies.length
   if (offset === 0) return
 
-  let lastReplyId = parentComment.replies[parentComment.replies.length - 1]?.comment_id || 0
+  let lastReplyId = parentComment.replies[parentComment.replies.length - 1]?.socket_id || 0
   let maxLoop = 10
 
   const refererUrl = `${BASE_URL}${targetPath}`
@@ -191,7 +183,7 @@ export async function fetchRepliesForComment(
         '/comment/fetch_reply',
         {
           _token: token,
-          parent_id: String(parentComment.comment_id),
+          parent_id: String(parentComment.socket_id),
           offset: String(offset),
           after: String(lastReplyId)
         },
@@ -204,23 +196,22 @@ export async function fetchRepliesForComment(
       if (newReplies.length === 0) break
 
       for (const reply of newReplies) {
-        if (!parentComment.replies.some(r => r.comment_id === reply.comment_id)) {
+        if (!parentComment.replies.some(r => r.socket_id === reply.socket_id)) {
           parentComment.replies.push(reply)
         }
       }
 
       offset = parentComment.replies.length
-      lastReplyId = parentComment.replies[parentComment.replies.length - 1].comment_id
+      lastReplyId = parentComment.replies[parentComment.replies.length - 1]?.socket_id ?? 0
 
       if (!resp.remaining || resp.remaining <= 0) break
     } catch (err) {
-      await logger.warn(`[Comment] Error fetching replies for comment ${parentComment.comment_id}:`, err)
+      await logger.warn(`[Comment] Error fetching replies for comment ${parentComment.socket_id}:`, err)
       break
     }
   }
 
   parentComment.total_reply = parentComment.replies.length
-  ;(parentComment as any).reply_count = parentComment.replies.length
 }
 
 export async function fetchComments(request: ScraperBookDetailRequest): Promise<ScraperCommentsPage> {
@@ -266,6 +257,39 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
   if (token) {
     customHeaders['X-CSRF-TOKEN'] = token
     customHeaders['X-XSRF-TOKEN'] = token
+  }
+
+  if (request.parentRef) {
+    const parentId = request.parentRef
+    try {
+      const resp = await doclnClient.postForm<{ status?: string; html?: string; remaining?: number }>(
+        '/comment/fetch_reply',
+        {
+          _token: token,
+          parent_id: String(parentId),
+          offset: String((page - 1) * 10),
+          after: '0'
+        },
+        customHeaders
+      )
+      if (resp && resp.status === 'success' && resp.html) {
+        const replies = parseCommentGroupHtml(resp.html, typeId)
+        return {
+          data: replies,
+          pagination: {
+            page,
+            pageSize: replies.length || 10,
+            hasNextPage: Boolean(resp.remaining && resp.remaining > 0)
+          }
+        }
+      }
+    } catch (err) {
+      await logger.warn(`[Comment] Error fetching replies for parentRef ${parentId}:`, err)
+    }
+    return {
+      data: [],
+      pagination: { page, pageSize: 10, hasNextPage: false }
+    }
   }
 
   let jsonResp: { status?: string; html?: string } = {}
@@ -345,5 +369,5 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
   return {
     data: comments,
     pagination
-  } as unknown as ScraperCommentsPage
+  }
 }

@@ -16,11 +16,20 @@ interface ScraperSearchRequest {
 }
 
 interface ScraperBookDetailRequest {
+  /** Book identifier or reference on the target site */
   bookRef: string
+  /**
+   * If supplied, indicates a request for reply comments belonging to a specific parent comment ID.
+   * Extensions should handle pagination using request.page when returning reply threads.
+   */
   parentRef?: string
+  /** Comment scope filter: 'series' or 'all' */
   commentScope?: 'series' | 'all'
+  /** Target scope: 'book' for book detail comments or 'chapter' for specific chapter comments */
   commentTarget?: 'book' | 'chapter'
+  /** Chapter identifier/reference when commentTarget is 'chapter' */
   targetRef?: string
+  /** Requested page number for pagination (1-indexed, for both root comments and parent replies) */
   page?: number
 }
 
@@ -74,64 +83,74 @@ interface ExtensionScraperApi {
 }
 
 interface ScraperBookSummary {
-  book_id: number
+  book_id?: number | string
   book_name: string
-  book_image: string
-  authors: Array<{ author_id: number; author_name: string }>
+  book_image?: string
+  authors?: Array<{ author_id?: number | string; author_name: string }>
 }
 
 interface ScraperBookDetail extends ScraperBookSummary {
-  book_sub_name: string[]
-  status: 'show' | 'hidden' | 'ongoing' | 'completed'
-  description: string
-  artists: Array<{ artist_id: number; artist_name: string }>
-  book_genre: Array<{ category_id: number; category_name: string }>
+  book_sub_name?: string[]
+  status?: string
+  description?: string
+  artists?: Array<{ artist_id?: number | string; artist_name: string }>
+  book_genre?: Array<{ category_id?: number | string; category_name: string }>
   volumes: Array<{
-    volume_id: number
+    volume_id?: number | string
     volume_name: string
     volume_number: number
-    created_at: string
-    updated_at: string
+    created_at?: string
+    updated_at?: string
     chapters: Array<{
-      chapter_id: number
+      chapter_id?: number | string
       chapter_name: string
       chapter_number: number
-      created_at: string
-      updated_at: string
+      created_at?: string
+      updated_at?: string
     }>
   }>
-  follow: number
-  latest_update: string | null
-  rating_count: number
-  total_index: number
-  views: number
-  total_comment: number
-  average_rating: number
+  follow?: number
+  latest_update?: string | null
+  rating_count?: number
+  total_index?: number
+  views?: number
+  total_comment?: number
+  average_rating?: number
 }
 
 interface ScraperChapter {
-  chapter_id: number
+  chapter_id?: number | string
   chapter_name: string
   chapter_number: number
-  volume_id: number
-  book_id: number
+  volume_id?: number | string
+  book_id?: number | string
   content: string[]
-  total_index: number
-  status: 'show' | 'hidden' | 'ongoing' | 'completed'
-  created_at: string
-  updated_at: string
+  total_index?: number
+  status?: string
+  created_at?: string
+  updated_at?: string
 }
 
 interface ScraperComment {
-  comment_id: number
-  user_id: number
+  /** Optional unique identifier string or number for the comment entity */
+  socket_id?: number | string
+  user_id?: number | string
   user_name: string
-  avatar: string
-  message: string
-  created_at: string
-  total_like: number
-  total_reply: number
-  is_like: boolean
+  avatar?: string
+  /** Required comment text content */
+  content: string
+  created_at?: string
+  total_like?: number
+  total_reply?: number
+  is_like?: boolean
+  /** Optional display name of chapter when comment belongs to a chapter */
+  chapter_name?: string
+  /** Optional chapter ID when comment belongs to a chapter */
+  chapter_id?: number | string
+  /**
+   * Note: Child reply comments should be served on-demand via getComments handler
+   * when request.parentRef is passed, rather than returned inlined in this array.
+   */
   replies?: ScraperComment[]
 }
 
@@ -141,51 +160,51 @@ interface ScraperCommentsPage {
 }
 
 interface ScraperReview {
-  interaction_id: number
-  user_id: number
+  interaction_id?: number | string
+  user_id?: number | string
   user_name: string
-  avatar: string
-  value: number
+  avatar?: string
+  value: number | string
   message: string
-  created_at: string
+  created_at?: string
 }
 
 interface TemplateBook {
-  id: number
+  id?: number | string
   title: string
   image?: string
-  author?: { id: number; name: string }
+  author?: { id?: number | string; name: string }
 }
 
 interface TemplateBookDetail extends TemplateBook {
   alternateTitles?: string[]
-  status?: 'show' | 'hidden' | 'ongoing' | 'completed'
+  status?: string
   description?: string
   volumes: Array<{
-    id: number
+    id?: number | string
     name: string
     number: number
-    createdAt: string
-    updatedAt: string
+    createdAt?: string
+    updatedAt?: string
     chapters: Array<{
-      id: number
+      id?: number | string
       name: string
       number: number
-      createdAt: string
-      updatedAt: string
+      createdAt?: string
+      updatedAt?: string
     }>
   }>
 }
 
 interface TemplateChapter {
-  id: number
+  id?: number | string
   name: string
   number: number
-  volumeId: number
-  bookId: number
+  volumeId?: number | string
+  bookId?: number | string
   paragraphs: string[]
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 interface TemplateSearchResponse {

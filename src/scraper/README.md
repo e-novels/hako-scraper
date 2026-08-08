@@ -278,6 +278,48 @@ await novel.scraper.register({
 
 Preserve the opaque `bookRef`, `chapterRef`, `parentRef`, and `targetRef` values supplied to handlers. They belong to the source integration; do not convert them to application database IDs.
 
+### Implementing `getComments` (Comments and Replies)
+
+When your extension declares the `getComments` capability, register a `getComments(request)` handler. The host calls this method to retrieve both top-level comments and paginated reply threads for comments.
+
+#### Request Parameters (`ScraperBookDetailRequest`)
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `bookRef` | `string` | The opaque book reference ID. |
+| `commentTarget` | `'book' \| 'chapter'` | Target scope: `'book'` for book-level comments, or `'chapter'` for chapter-level comments. |
+| `targetRef` | `string` (optional) | The chapter reference ID when `commentTarget` is `'chapter'`. |
+| `parentRef` | `string` (optional) | When supplied, the host is requesting reply comments for a specific parent comment ID. |
+| `page` | `number` (optional) | The 1-indexed page number requested (defaults to 1). Extensions should respect `page` for both root comments and nested replies when pagination is available. |
+
+#### Comment Data Structure (`ScraperComment`)
+
+Each comment item in the `data` array must provide:
+- `socket_id` (optional): Unique identifier string or number for the comment entity. If omitted (e.g. source web page does not provide comment IDs), the host automatically generates a surrogate ID.
+- `content`: **REQUIRED** text content string of the comment.
+- `user_name`: Display name of the commenter.
+- `avatar`: Valid image URL for author avatar.
+- `created_at`: ISO 8601 date string or timestamp.
+- `total_like`: Number of likes (non-negative integer).
+- `total_reply`: Number of replies under this comment (non-negative integer).
+- `is_like`: Boolean indicating whether the user liked the comment.
+- `chapter_name` (optional): Display title of the chapter (e.g. `"Chương 12"`).
+- `chapter_id` (optional): Chapter ID string or number when comment belongs to a chapter. When provided along with `chapter_name`, a clickable link badge will appear allowing users to navigate directly to that chapter.
+
+> **Note on Removed Fields**: Legacy fields `comment_id`, `message`, `room_id`, and `chapter_ref` have been removed. Use `socket_id` for comment IDs, `content` for comment text, and `chapter_id` for chapter link references.
+
+#### Mandatory Response Field Constraints
+- `volume_number` (**REQUIRED** integer): Every volume in `ScraperBookDetail.volumes` must include a valid positive `volume_number` for sorting.
+- `chapter_number` (**REQUIRED** integer): Every chapter in `volume.chapters` and `ScraperChapter` must include a valid positive `chapter_number` for sorting.
+- `status` (optional string): Status can be any free-form status string (e.g. `"ongoing"`, `"completed"`, `"suspended"`, or custom text). If omitted, the host defaults to `"suspended"` ("Tạm hoãn").
+
+#### Servicing Reply Threads and Pagination
+
+When a user clicks "Phản hồi" or "Hiển thị thêm phản hồi" (Load more replies), the host calls `getComments` passing `parentRef` (the parent comment ID) and the target `page`. Your handler should:
+1. Detect if `request.parentRef` is present.
+2. Request the corresponding reply page from your source.
+3. Return `{ data: ScraperComment[], pagination: { page, pageSize, totalItems, totalPages, hasNextPage } }`.
+
 ## Fixture Workflow And Failures
 
 `test/scraper/fixtures/` is the local source of truth for author tests. Replace `search.json`, `book-detail.json`, `chapter.json`, and optionally `chapter.html` with scrubbed representative payloads. The runner never contacts a live source and proves URL construction, registration, mapping, and HTML extraction in both desktop and browser bundles.
