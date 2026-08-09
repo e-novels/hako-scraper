@@ -15,9 +15,10 @@ export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRating
 export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
 export { parseReviewsHtml, fetchReviews } from './rating'
 export { parseCommentGroupHtml, fetchComments } from './comment'
+export { login, checkConnection, fetchCsrfToken as fetchAuthCsrfToken, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession } from './auth'
+export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './livewire'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
-
   return {
     book_id: book.id,
     book_name: book.title,

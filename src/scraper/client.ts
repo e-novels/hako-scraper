@@ -1,4 +1,4 @@
-import { network, logger } from '../utilities'
+import { network } from '../utilities'
 import { BASE_URL } from './index'
 
 export { BASE_URL }
@@ -15,9 +15,22 @@ export function buildEndpointUrl(pathname: string): string {
 }
 
 export class DoclnClient {
+  private storedCookies: string = ''
+
+  public setStoredCookies(cookies: string): void {
+    this.storedCookies = cookies || ''
+  }
+
+  public getStoredCookies(): string {
+    return this.storedCookies
+  }
+
   private prepareRequest(pathnameOrUrl: string, customHeaders?: Record<string, string>) {
     const targetUrl = pathnameOrUrl.startsWith('http') ? pathnameOrUrl : buildEndpointUrl(pathnameOrUrl)
-    const headers = { ...DEFAULT_HEADERS, ...customHeaders }
+    const headers: Record<string, string> = { ...DEFAULT_HEADERS, ...customHeaders }
+    if (this.storedCookies && !headers['Cookie']) {
+      headers['Cookie'] = this.storedCookies
+    }
     return { targetUrl, headers }
   }
 
@@ -49,8 +62,29 @@ export class DoclnClient {
     const body = params.toString()
     return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
   }
+
+  public async postFormText(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<string> {
+    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      ...customHeaders
+    })
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(formData)) {
+      params.set(key, value)
+    }
+    const body = params.toString()
+    return network.fetchText(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
+  }
+
+  public async postJson<T = unknown>(pathnameOrUrl: string, jsonPayload: unknown, customHeaders?: Record<string, string>): Promise<T> {
+    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, {
+      'Content-Type': 'application/json',
+      'X-Livewire': '',
+      ...customHeaders
+    })
+    const body = JSON.stringify(jsonPayload)
+    return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
+  }
 }
 
 export const doclnClient = new DoclnClient()
-
-

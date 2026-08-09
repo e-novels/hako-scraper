@@ -26,7 +26,8 @@
   ],
   "permissions": [
     "network",
-    "reader"
+    "reader",
+    "storage"
   ],
   "network": {
     "allowedHosts": [
@@ -47,6 +48,37 @@
     ]
   },
   "contributes": {
+    "settings": {
+      "fields": [
+        {
+          "id": "email",
+          "type": "text",
+          "label": "Email / Tên tài khoản Hako",
+          "placeholder": "user@example.com"
+        },
+        {
+          "id": "password",
+          "type": "password",
+          "label": "Mật khẩu Hako",
+          "placeholder": "••••••••"
+        }
+      ],
+      "actions": [
+        {
+          "id": "loginAndCheckConnection",
+          "label": "Đăng nhập & Kiểm tra kết nối",
+          "fields": [
+            "email",
+            "password"
+          ],
+          "style": "primary"
+        },
+        {
+          "id": "clearSession",
+          "label": "Đăng xuất & Xóa Session"
+        }
+      ]
+    },
     "scraper": {
       "name": "Hako",
       "description": "Search and read books from Hako.",
