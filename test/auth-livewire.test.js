@@ -1,7 +1,15 @@
 'use strict'
 
 const assert = require('node:assert')
-const { extractCsrfToken, parseConnectionState, getLivewireSnapshot, parseToggleSetting, loginAndCheckConnection } = require('../dist/index')
+const { extractCsrfToken, parseConnectionState, getLivewireSnapshot, parseToggleSetting, loginAndCheckConnection, initExtensionApi } = require('../dist/index')
+
+initExtensionApi({
+  version: '1.0.0',
+  extension: { id: 'test' },
+  logger: { info: async () => {}, warn: async () => {}, error: async () => {} },
+  network: { fetchText: async () => '', fetchJson: async () => ({}), fetchDataUrl: async () => '' },
+  storage: { get: async () => null, set: async () => {}, remove: async () => {}, createAssetUrl: async () => null }
+})
 
 console.log('[Test Auth & Livewire] Starting unit tests...')
 
@@ -28,16 +36,27 @@ assert.strictEqual(guestState.isLoggedIn, false, 'Guest user should have isLogge
 const loggedInHtml = `
 <html>
   <body>
-    <div class="flex flex-wrap gap-x-2">
-      <a class="font-bold ln-username" href="/thanh-vien/12345">HaiDoan</a>
-      <img src="https://i.hako.vip/lightnovel/users/ua12345-avatar.jpg" />
+    <div id="navbar-user">
+      <div class="nav-user_icon">
+        <div class="nav-user_avatar">
+          <img src="https://i.hako.vip/lightnovel/users/ua12345-avatar.jpg" alt="Your avatar">
+        </div>
+        <ul class="account-sidebar hidden-block unstyled none">
+          <li>
+            <a href="/thanh-vien/12345"><i class="fas fa-user"></i><span>HaiDoan</span></a>
+          </li>
+          <li>
+            <a href="/logout"><i class="fas fa-sign-out-alt"></i><span>Thoát</span></a>
+          </li>
+        </ul> 
+      </div>
     </div>
   </body>
 </html>
 `
 const loggedInState = parseConnectionState(loggedInHtml)
-assert.strictEqual(loggedInState.isLoggedIn, true, 'Logged-in user should have isLoggedIn: true')
-assert.strictEqual(loggedInState.username, 'HaiDoan', 'Username extraction failed')
+assert.strictEqual(loggedInState.isLoggedIn, true, 'Logged-in user with #navbar-user should have isLoggedIn: true')
+assert.strictEqual(loggedInState.userId, '12345', 'User ID extraction failed')
 
 // 3. Test getLivewireSnapshot & parseToggleSetting
 const livewireHtmlTrue = `

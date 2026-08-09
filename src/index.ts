@@ -4,7 +4,8 @@ import { loginAndCheckConnection, clearSession, loadStoredSession } from './scra
 
 export { extractArticleParagraphs } from './scraper/html'
 export { parseCommentGroupHtml, fetchComments } from './scraper/comment'
-export { login, checkConnection, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession } from './scraper/auth'
+export { login, checkConnection, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, saveSessionCookies, loadStoredSession } from './scraper/auth'
+export { doclnClient } from './scraper/client'
 export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './scraper/livewire'
 export * from './utilities'
 

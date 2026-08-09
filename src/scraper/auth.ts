@@ -15,57 +15,99 @@ export function extractCsrfToken(html: string): string {
   return ''
 }
 
-export function parseConnectionState(html: string): { isLoggedIn: boolean; username?: string; avatar?: string } {
+export function parseConnectionState(html: string): { isLoggedIn: boolean; username?: string; avatar?: string; userId?: string } {
   if (!html) {
     return { isLoggedIn: false }
   }
 
   const { document } = parseHTML(html)
+  const navbarUser = document.querySelector('#navbar-user')
+  if (!navbarUser) {
+    return { isLoggedIn: false }
+  }
+
+  const logoutLink = navbarUser.querySelector('a[href*="/logout"]') || navbarUser.querySelector('a[href="/logout"]')
+  if (!logoutLink) {
+    return { isLoggedIn: false }
+  }
+
+  const avatarEl = navbarUser.querySelector('.nav-user_avatar img') || navbarUser.querySelector('img')
+  const profileLink = navbarUser.querySelector('a[href*="/thanh-vien/"]')
   
-  const usernameEl = document.querySelector('.ln-username') || document.querySelector('a[href*="/thanh-vien/"]')
-  const userAvatarEl = document.querySelector('img[src*="/users/avatars/"]') || document.querySelector('.ln-comment_sign-in img')
+  let userId: string | undefined
+  let username: string | undefined
 
-  const signInNotice = html.includes('Bạn phải <a href="/login">đăng nhập</a>') || (html.includes('href="/login"') && !usernameEl)
-
-  if (usernameEl && !signInNotice) {
-    return {
-      isLoggedIn: true,
-      username: usernameEl.textContent?.trim() || undefined,
-      avatar: userAvatarEl?.getAttribute('src') || undefined
+  if (profileLink) {
+    const href = profileLink.getAttribute('href') || ''
+    const match = href.match(/\/thanh-vien\/(\d+)/)
+    if (match) {
+      userId = match[1]
+    }
+    const linkText = profileLink.textContent?.trim()
+    if (linkText && !linkText.toLowerCase().includes('tài khoản')) {
+      username = linkText
     }
   }
 
-  const hasLogout = html.includes('/logout') || html.includes('action="/logout"')
-  if (hasLogout) {
-    return {
-      isLoggedIn: true,
-      username: usernameEl?.textContent?.trim()
-    }
+  const usernameEl = document.querySelector('.ln-username')
+  if (!username && usernameEl) {
+    username = usernameEl.textContent?.trim()
   }
 
-  return { isLoggedIn: false }
+  return {
+    isLoggedIn: true,
+    userId,
+    username: username || (userId ? `User_${userId}` : undefined),
+    avatar: avatarEl?.getAttribute('src') || undefined
+  }
 }
 
-export async function fetchCsrfToken(): Promise<string> {
-  // First attempt: try GET / (home page) which never redirects and contains meta csrf-token
+export async function fetchCsrfTokenAndSession(): Promise<{ csrfToken: string; cookies: string }> {
   try {
-    const html = await doclnClient.fetchText('/')
-    const token = extractCsrfToken(html)
-    if (token) return token
+    if (typeof globalThis.fetch === 'function') {
+      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      const res = await globalThis.fetch('https://docln.sbs/login', {
+        headers: {
+          'User-Agent': userAgent,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+          'Accept-Language': 'vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
+      })
+      const html = await res.text()
+      const token = extractCsrfToken(html)
+      
+      const getSetCookies = res.headers.getSetCookie ? res.headers.getSetCookie() : []
+      const cookieJar: Record<string, string> = {}
+      for (const c of getSetCookies) {
+        const parts = c.split(';')[0].split('=')
+        if (parts.length >= 2) {
+          cookieJar[parts[0].trim()] = parts.slice(1).join('=').trim()
+        }
+      }
+      const cookieHeader = Object.entries(cookieJar).map(([k, v]) => `${k}=${v}`).join('; ')
+      if (cookieHeader) {
+        await saveSessionCookies(cookieHeader)
+      }
+      if (token) return { csrfToken: token, cookies: cookieHeader }
+    }
   } catch (err) {
-    await logger.warn('[Auth] GET / failed while fetching CSRF token:', err)
+    await logger.warn('[Auth] Direct fetch for CSRF and cookies failed, falling back:', err)
   }
 
-  // Second attempt: try GET /login as fallback
+  // Fallback using doclnClient
   try {
     const html = await doclnClient.fetchText('/login')
     const token = extractCsrfToken(html)
-    if (token) return token
+    return { csrfToken: token, cookies: doclnClient.getStoredCookies() }
   } catch (err) {
-    await logger.warn('[Auth] GET /login failed/redirected while fetching CSRF token:', err)
+    await logger.warn('[Auth] doclnClient fetchText /login failed:', err)
+    return { csrfToken: '', cookies: '' }
   }
+}
 
-  return ''
+export async function fetchCsrfToken(): Promise<string> {
+  const { csrfToken } = await fetchCsrfTokenAndSession()
+  return csrfToken
 }
 
 export async function loadStoredSession(): Promise<string | null> {
@@ -92,6 +134,14 @@ export async function saveSessionCookies(cookieHeaderString: string): Promise<vo
 
 export async function clearSession(): Promise<ExtensionSettingsActionResult> {
   try {
+    const currentCookies = doclnClient.getStoredCookies()
+    if (currentCookies) {
+      try {
+        await doclnClient.fetchText('/logout', { 'Referer': 'https://docln.sbs/' })
+      } catch (err) {
+        // Ignore network errors on remote logout if session already invalidated
+      }
+    }
     doclnClient.setStoredCookies('')
     await storage.remove(STORAGE_SESSION_COOKIE_KEY)
     await storage.remove(STORAGE_USER_PROFILE_KEY)
@@ -110,13 +160,16 @@ export async function clearSession(): Promise<ExtensionSettingsActionResult> {
   }
 }
 
-export async function checkConnection(): Promise<{ isLoggedIn: boolean; username?: string; avatar?: string }> {
+export async function checkConnection(): Promise<{ isLoggedIn: boolean; username?: string; avatar?: string; userId?: string }> {
   try {
     await loadStoredSession()
     const html = await doclnClient.fetchText('/')
     const state = parseConnectionState(html)
+    await logger.info(`[Auth] Check Connection -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
     if (state.isLoggedIn) {
       await storage.set(STORAGE_USER_PROFILE_KEY, state)
+    } else {
+      await storage.remove(STORAGE_USER_PROFILE_KEY)
     }
     return state
   } catch (err) {
@@ -126,32 +179,80 @@ export async function checkConnection(): Promise<{ isLoggedIn: boolean; username
 }
 
 export async function login(email?: string, password?: string): Promise<boolean> {
+  await logger.info(`[Auth] Attempting login for account: "${email || ''}"`)
+
   if (!email || !password) {
     await logger.warn('[Auth] Missing email or password for login')
     return false
   }
 
+  doclnClient.setStoredCookies('')
+  await storage.remove(STORAGE_SESSION_COOKIE_KEY)
+  await storage.remove(STORAGE_USER_PROFILE_KEY)
+
   try {
-    const csrfToken = await fetchCsrfToken()
+    const { csrfToken, cookies } = await fetchCsrfTokenAndSession()
     if (!csrfToken) {
       await logger.warn('[Auth] Unable to retrieve CSRF token for login request')
       return false
     }
 
-    await doclnClient.postFormText('/login', {
-      _token: csrfToken,
-      name: email,
-      password: password
-    }, {
-      'Referer': 'https://docln.sbs/login'
-    })
+    if (typeof globalThis.fetch === 'function') {
+      const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      const bodyParams = new URLSearchParams()
+      bodyParams.append('_token', csrfToken)
+      bodyParams.append('name', email)
+      bodyParams.append('password', password)
+      bodyParams.append('remember', 'on')
+
+      const resPost = await globalThis.fetch('https://docln.sbs/login', {
+        method: 'POST',
+        headers: {
+          'User-Agent': userAgent,
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': cookies || doclnClient.getStoredCookies(),
+          'Referer': 'https://docln.sbs/login',
+          'Origin': 'https://docln.sbs'
+        },
+        body: bodyParams.toString(),
+        redirect: 'manual'
+      })
+
+      const setCookiesB = resPost.headers.getSetCookie ? resPost.headers.getSetCookie() : []
+      if (setCookiesB.length > 0) {
+        const cookieJar: Record<string, string> = {}
+        const existingParts = (cookies || '').split(';')
+        for (const p of existingParts) {
+          const keyVal = p.split('=')
+          if (keyVal.length >= 2) cookieJar[keyVal[0].trim()] = keyVal.slice(1).join('=').trim()
+        }
+        for (const c of setCookiesB) {
+          const parts = c.split(';')[0].split('=')
+          if (parts.length >= 2) cookieJar[parts[0].trim()] = parts.slice(1).join('=').trim()
+        }
+        const authenticatedCookie = Object.entries(cookieJar).map(([k, v]) => `${k}=${v}`).join('; ')
+        if (authenticatedCookie) {
+          await saveSessionCookies(authenticatedCookie)
+        }
+      }
+    } else {
+      await doclnClient.postFormText('/login', {
+        _token: csrfToken,
+        name: email,
+        password: password
+      }, {
+        'Referer': 'https://docln.sbs/login',
+        'Cookie': cookies || doclnClient.getStoredCookies()
+      })
+    }
 
     const state = await checkConnection()
+    await logger.info(`[Auth] Login Result -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
     return state.isLoggedIn
   } catch (err: any) {
-    // If error is redirect (e.g. 302 redirect after successful login POST)
     if (String(err?.message || err).includes('Redirect')) {
       const state = await checkConnection()
+      await logger.info(`[Auth] Login Result (Redirect) -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
       if (state.isLoggedIn) return true
     }
     await logger.warn('[Auth] Login request failed:', err)
@@ -166,7 +267,6 @@ export async function loginAndCheckConnection(values: Record<string, unknown> = 
 
   let password = typeof values.password === 'string' ? values.password.trim() : ''
 
-  // Fallback to storage credentials if empty in values
   if (!email || !password) {
     try {
       const storedCreds = await storage.get<{ email?: string; password?: string }>(STORAGE_CREDENTIALS_KEY)
@@ -178,7 +278,10 @@ export async function loginAndCheckConnection(values: Record<string, unknown> = 
     } catch {}
   }
 
+  await logger.info(`[Auth] Settings Action -> Attempting login for account: "${email}"`)
+
   if (!email || !password) {
+    await logger.warn('[Auth] Missing email or password in settings action')
     return {
       success: false,
       message: 'Vui lòng nhập đầy đủ Email và Mật khẩu.'
@@ -188,20 +291,24 @@ export async function loginAndCheckConnection(values: Record<string, unknown> = 
   try {
     await storage.set(STORAGE_CREDENTIALS_KEY, { email, password })
     const isSuccess = await login(email, password)
-    if (isSuccess) {
-      const state = await checkConnection()
-      const usernameInfo = state.username ? ` (${state.username})` : ''
+    const state = await checkConnection()
+
+    if (isSuccess && state.isLoggedIn) {
+      const usernameInfo = state.username ? ` (${state.username})` : (state.userId ? ` (ID: ${state.userId})` : '')
       return {
         success: true,
         message: `Đăng nhập & Kết nối Hako thành công!${usernameInfo}`
       }
     } else {
+      await storage.remove(STORAGE_CREDENTIALS_KEY)
+      await storage.remove(STORAGE_USER_PROFILE_KEY)
       return {
         success: false,
         message: 'Đăng nhập không thành công. Vui lòng kiểm tra lại Email và Mật khẩu.'
       }
     }
   } catch (err) {
+    await logger.warn('[Auth] Error in loginAndCheckConnection:', err)
     return {
       success: false,
       message: `Lỗi kết nối Hako: ${String(err)}`

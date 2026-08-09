@@ -36,17 +36,17 @@ export class DoclnClient {
 
   public async fetchText(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    return network.fetchText(targetUrl, { headers, credentials: 'include' })
+    return network.fetchText(targetUrl, { headers, credentials: 'omit' })
   }
 
   public async fetchJson<T = unknown>(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<T> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    return network.fetchJson<T>(targetUrl, { headers, credentials: 'include' })
+    return network.fetchJson<T>(targetUrl, { headers, credentials: 'omit' })
   }
 
   public async fetchDataUrl(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
     const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
-    return network.fetchDataUrl(targetUrl, { headers, credentials: 'include' })
+    return network.fetchDataUrl(targetUrl, { headers, credentials: 'omit' })
   }
 
   public async postForm<T = unknown>(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<T> {
@@ -60,7 +60,7 @@ export class DoclnClient {
       params.set(key, value)
     }
     const body = params.toString()
-    return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
+    return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'omit' })
   }
 
   public async postFormText(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<string> {
@@ -73,7 +73,7 @@ export class DoclnClient {
       params.set(key, value)
     }
     const body = params.toString()
-    return network.fetchText(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
+    return network.fetchText(targetUrl, { method: 'POST', headers, body, credentials: 'omit' })
   }
 
   public async postJson<T = unknown>(pathnameOrUrl: string, jsonPayload: unknown, customHeaders?: Record<string, string>): Promise<T> {
@@ -83,7 +83,7 @@ export class DoclnClient {
       ...customHeaders
     })
     const body = JSON.stringify(jsonPayload)
-    return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'include' })
+    return network.fetchJson<T>(targetUrl, { method: 'POST', headers, body, credentials: 'omit' })
   }
 }
 
