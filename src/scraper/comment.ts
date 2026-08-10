@@ -237,15 +237,16 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
 
   await logger.info(`[Comment] Fetching ${type} comments for ID ${typeId}, page ${page}...`)
 
-  if (type === 'series' && request.commentScope === 'series') {
+  const { token, html: pageHtml } = await fetchCsrfToken(targetPath)
+
+  if (type === 'series') {
+    const hideChapterComments = request.commentScope === 'series'
     try {
-      await ensureChapterCommentState(targetPath, true)
+      await ensureChapterCommentState(targetPath, hideChapterComments, pageHtml)
     } catch (err) {
       await logger.warn('[Comment] ensureChapterCommentState failed, proceeding with fallback filtering:', err)
     }
   }
-
-  const { token, html: pageHtml } = await fetchCsrfToken(targetPath)
 
   if (!typeId && pageHtml) {
     const { document } = parseHTML(pageHtml)

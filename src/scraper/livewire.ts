@@ -24,9 +24,9 @@ export function parseToggleSetting(snapshotJson: string): boolean {
   }
 }
 
-export async function ensureChapterCommentState(bookPathOrUrl: string, hideChapterComments: boolean): Promise<boolean> {
+export async function ensureChapterCommentState(bookPathOrUrl: string, hideChapterComments: boolean, existingHtml?: string): Promise<boolean> {
   try {
-    const pageHtml = await doclnClient.fetchText(bookPathOrUrl)
+    const pageHtml = existingHtml ?? (await doclnClient.fetchText(bookPathOrUrl))
     const snapshot = getLivewireSnapshot(pageHtml)
 
     if (!snapshot) {

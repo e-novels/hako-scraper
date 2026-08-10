@@ -21,8 +21,9 @@ if (!runner) {
 
 async function main() {
   await runUtilitiesTests(root)
-  require('./auth-livewire.test')
+  await require('./auth-livewire.test')()
   require('./comment-scope.test')
+  await require('./comment-switch-reverse.test')()
   await require('./auth-clear-session.test')()
   await require('./auth-check-connection.test')()
   await require(runner)(root, manifest)
