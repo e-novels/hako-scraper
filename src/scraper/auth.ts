@@ -146,7 +146,6 @@ export async function clearSession(): Promise<ExtensionSettingsActionResult> {
     await storage.remove(STORAGE_SESSION_COOKIE_KEY)
     await storage.remove(STORAGE_USER_PROFILE_KEY)
     await storage.remove(STORAGE_CREDENTIALS_KEY)
-    await logger.info('[Auth] Session cleared successfully')
     return {
       success: true,
       message: 'Đã đăng xuất và xóa Session lưu trữ.'
@@ -185,7 +184,6 @@ export async function checkConnection(): Promise<{ isLoggedIn: boolean; username
         state.username = profileName
       }
     }
-    await logger.info(`[Auth] Check Connection -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
     if (state.isLoggedIn) {
       await storage.set(STORAGE_USER_PROFILE_KEY, state)
     } else {
@@ -232,7 +230,6 @@ export async function ensureAuthenticatedSession(): Promise<boolean> {
     if (creds && typeof creds === 'object' && !('arrayBuffer' in creds)) {
       const { email, password } = creds as { email?: string; password?: string }
       if (email && password) {
-        await logger.info('[Auth] Session missing/expired. Attempting auto-login with stored credentials...')
         return await login(email, password)
       }
     }
@@ -243,8 +240,6 @@ export async function ensureAuthenticatedSession(): Promise<boolean> {
 }
 
 export async function login(email?: string, password?: string): Promise<boolean> {
-  await logger.info(`[Auth] Attempting login for account: "${email || ''}"`)
-
   if (!email || !password) {
     await logger.warn('[Auth] Missing email or password for login')
     return false
@@ -311,12 +306,10 @@ export async function login(email?: string, password?: string): Promise<boolean>
     }
 
     const state = await checkConnection()
-    await logger.info(`[Auth] Login Result -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
     return state.isLoggedIn
   } catch (err: any) {
     if (String(err?.message || err).includes('Redirect')) {
       const state = await checkConnection()
-      await logger.info(`[Auth] Login Result (Redirect) -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
       if (state.isLoggedIn) return true
     }
     await logger.warn('[Auth] Login request failed:', err)
@@ -341,8 +334,6 @@ export async function loginAndCheckConnection(values: Record<string, unknown> = 
       }
     } catch {}
   }
-
-  await logger.info(`[Auth] Settings Action -> Attempting login for account: "${email}"`)
 
   if (!email || !password) {
     await logger.warn('[Auth] Missing email or password in settings action')

@@ -146,6 +146,19 @@ export async function fetchCsrfToken(targetPath: string): Promise<{ token: strin
                     html.match(/_token\s*=\s*['"]([^'"]+)['"]/i)
       if (match && match[1]) token = match[1]
     }
+
+    if (!doclnClient.getStoredCookies() && typeof globalThis.fetch === 'function') {
+      try {
+        const { fetchCsrfTokenAndSession } = await import('./auth')
+        const sessionRes = await fetchCsrfTokenAndSession()
+        if (sessionRes.csrfToken) {
+          token = sessionRes.csrfToken
+        }
+      } catch (sessionErr) {
+        await logger.warn('[Comment] fetchCsrfTokenAndSession fallback failed:', sessionErr)
+      }
+    }
+
     return { token, html }
   } catch (err) {
     await logger.warn('[Comment] Failed to fetch CSRF token page:', err)
@@ -235,8 +248,6 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
     if (bookMatch) typeId = parseInt(bookMatch[1], 10)
   }
 
-  await logger.info(`[Comment] Fetching ${type} comments for ID ${typeId}, page ${page}...`)
-
   const { token, html: pageHtml } = await fetchCsrfToken(targetPath)
 
   if (type === 'series') {
@@ -315,17 +326,29 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
       customHeaders
     )
   } catch (err: any) {
-    if (String(err?.message || err).includes('419')) {
-      await logger.warn(`[Comment] HTTP 419 detected, retrying with fresh token session...`)
-      const fresh = await fetchCsrfToken(targetPath)
-      if (fresh.token) {
-        customHeaders['X-CSRF-TOKEN'] = fresh.token
-        customHeaders['X-XSRF-TOKEN'] = fresh.token
+    const errStr = String(err?.message || err)
+    if (errStr.includes('419') || errStr.includes('429') || errStr.includes('403')) {
+      await logger.warn(`[Comment] HTTP error detected (${errStr}), retrying with fresh token & session...`)
+      let freshToken = ''
+      try {
+        const { fetchCsrfTokenAndSession } = await import('./auth')
+        const freshSession = await fetchCsrfTokenAndSession()
+        freshToken = freshSession.csrfToken
+      } catch {}
+
+      if (!freshToken) {
+        const fresh = await fetchCsrfToken(targetPath)
+        freshToken = fresh.token
+      }
+
+      if (freshToken) {
+        customHeaders['X-CSRF-TOKEN'] = freshToken
+        customHeaders['X-XSRF-TOKEN'] = freshToken
         try {
           jsonResp = await doclnClient.postForm<{ status?: string; html?: string }>(
             '/comment/ajax_paging',
             {
-              _token: fresh.token,
+              _token: freshToken,
               type,
               type_id: String(typeId),
               page: String(page)
@@ -377,8 +400,6 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
     pageSize: comments.length || 10,
     hasNextPage
   }
-
-  await logger.info('[Comment] Pagination:', pagination)
 
   return {
     data: comments,

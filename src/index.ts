@@ -18,7 +18,6 @@ export async function activate(novel: NovelExtensionApi): Promise<void> {
     checkConnectionAction,
     clearSession
   })
-  await logger.info(`Activated ${novel.extension.id}`)
 }
 
 export async function deactivate(): Promise<void> {

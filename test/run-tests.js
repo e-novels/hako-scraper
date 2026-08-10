@@ -26,6 +26,7 @@ async function main() {
   await require('./comment-switch-reverse.test')()
   await require('./auth-clear-session.test')()
   await require('./auth-check-connection.test')()
+  await require('./comment-guest-session.test')()
   await require(runner)(root, manifest)
 }
 

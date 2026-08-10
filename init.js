@@ -243,7 +243,6 @@ export * from './utilities'
 export async function activate(novel: NovelExtensionApi): Promise<void> {
   initExtensionApi(novel)
   await activateScraper(novel)
-  await logger.info(\`Activated \${novel.extension.id}\`)
 }
 
 export async function deactivate(): Promise<void> {
@@ -259,7 +258,6 @@ export * from './utilities'
 export async function activate(novel: NovelExtensionApi): Promise<void> {
   initExtensionApi(novel)
   await activateTheme(novel)
-  await logger.info(\`Activated \${novel.extension.id}\`)
 }
 
 export async function deactivate(): Promise<void> {
@@ -275,7 +273,6 @@ export * from './utilities'
 export async function activate(novel: NovelExtensionApi): Promise<void> {
   initExtensionApi(novel)
   registerTranslatorProfile(novel)
-  await logger.info(\`Activated \${novel.extension.id}\`)
 }
 
 export async function deactivate(): Promise<void> {
@@ -291,7 +288,6 @@ export * from './utilities'
 export async function activate(novel: NovelExtensionApi): Promise<void> {
   initExtensionApi(novel)
   await activateTTS(novel)
-  await logger.info(\`Activated \${novel.extension.id}\`)
 }
 
 export async function deactivate(): Promise<void> {

@@ -189,7 +189,7 @@ module.exports = async function runScraperTests(root, manifest) {
     await extension.activate(mockNovel)
 
     assert.equal(await mockNovel.storage.createAssetUrl('models/voice.onnx'), 'novel-ext://mock-token/voice.onnx')
-    assert.deepEqual(logs, [`Activated ${manifest.name}`])
+    assert.deepEqual(logs, [])
     assert.deepEqual(extension.extractArticleParagraphs(html, '.chapter-content'), [
       'First HTML fixture paragraph.',
       '<img src="https://images.weserv.nl/?url=https%3A%2F%2Fi1.hako.vip%2Fimages%2Fillustration.jpg" />\nSecond HTML fixture paragraph.'
