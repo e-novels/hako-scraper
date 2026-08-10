@@ -4,6 +4,7 @@ import { BASE_URL, doclnClient } from './client'
 import { resolveBookUrl } from './bookDetail'
 import { resolveChapterUrl } from './chapter'
 import { normalizeImageUrl, wrapWeservUrl } from './image'
+import { ensureChapterCommentState } from './livewire'
 
 function parseInteger(str: string | null | undefined): number {
   if (!str) return 0
@@ -236,6 +237,14 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
 
   await logger.info(`[Comment] Fetching ${type} comments for ID ${typeId}, page ${page}...`)
 
+  if (type === 'series' && request.commentScope === 'series') {
+    try {
+      await ensureChapterCommentState(targetPath, true)
+    } catch (err) {
+      await logger.warn('[Comment] ensureChapterCommentState failed, proceeding with fallback filtering:', err)
+    }
+  }
+
   const { token, html: pageHtml } = await fetchCsrfToken(targetPath)
 
   if (!typeId && pageHtml) {
@@ -331,7 +340,11 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
     }
   }
 
-  const comments = parseCommentGroupHtml(jsonResp.html || '', typeId)
+  let comments = parseCommentGroupHtml(jsonResp.html || '', typeId)
+
+  if (type === 'series' && request.commentScope === 'series') {
+    comments = comments.filter(c => c.chapter_id === undefined)
+  }
 
   for (const comment of comments) {
     if (comment.replies && comment.replies.length > 0) {

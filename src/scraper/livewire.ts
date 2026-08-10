@@ -1,5 +1,5 @@
 import { logger } from '../utilities'
-import { doclnClient } from './client'
+import { BASE_URL, doclnClient } from './client'
 import { extractCsrfToken } from './auth'
 
 export function getLivewireSnapshot(html: string): string | null {
@@ -64,7 +64,7 @@ export async function ensureChapterCommentState(bookPathOrUrl: string, hideChapt
       ]
     }
 
-    const refererUrl = bookPathOrUrl.startsWith('http') ? bookPathOrUrl : `https://docln.sbs${bookPathOrUrl.startsWith('/') ? '' : '/'}${bookPathOrUrl}`
+    const refererUrl = bookPathOrUrl.startsWith('http') ? bookPathOrUrl : `${BASE_URL}${bookPathOrUrl.startsWith('/') ? '' : '/'}${bookPathOrUrl}`
 
     await doclnClient.postJson('/livewire/update', payload, {
       'Referer': refererUrl
@@ -76,3 +76,4 @@ export async function ensureChapterCommentState(bookPathOrUrl: string, hideChapt
     return false
   }
 }
+
