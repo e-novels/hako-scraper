@@ -10,12 +10,14 @@ import { fetchReviews, parseReviewsHtml } from './rating'
 import { executeSearch, getFilterOptions } from './search'
 import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
 
+import { ensureAuthenticatedSession } from './auth'
+
 export { extractArticleParagraphs } from './html'
 export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './bookDetail'
 export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
 export { parseReviewsHtml, fetchReviews } from './rating'
 export { parseCommentGroupHtml, fetchComments } from './comment'
-export { login, checkConnection, fetchCsrfToken as fetchAuthCsrfToken, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession } from './auth'
+export { login, checkConnection, fetchCsrfToken as fetchAuthCsrfToken, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, ensureAuthenticatedSession } from './auth'
 export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './livewire'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
@@ -77,12 +79,15 @@ function toChapter(chapter: TemplateChapter): ScraperChapter {
 export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
   await novel.scraper.register({
     async search({ filters, page, pageSize }) {
+      await ensureAuthenticatedSession()
       return executeSearch(filters, page, pageSize)
     },
     async getFilterOptions(request) {
+      await ensureAuthenticatedSession()
       return getFilterOptions(request)
     },
     async getBookDetail({ bookRef }) {
+      await ensureAuthenticatedSession()
       try {
         return await fetchBookDetail(bookRef)
       } catch (err) {
@@ -98,6 +103,7 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
       }
     },
     async getChapter({ chapterRef }) {
+      await ensureAuthenticatedSession()
       try {
         return await fetchChapter(chapterRef)
       } catch (err) {
@@ -111,9 +117,11 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
       }
     },
     async getReviews({ bookRef }) {
+      await ensureAuthenticatedSession()
       return fetchReviews(bookRef)
     },
     async getComments(request) {
+      await ensureAuthenticatedSession()
       return fetchComments(request)
     }
   })

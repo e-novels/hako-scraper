@@ -160,11 +160,31 @@ export async function clearSession(): Promise<ExtensionSettingsActionResult> {
   }
 }
 
+export async function fetchUserProfileName(userId: string): Promise<string | undefined> {
+  if (!userId) return undefined
+  try {
+    const html = await doclnClient.fetchText(`/thanh-vien/${userId}`)
+    const { document } = parseHTML(html)
+    const nameEl = document.querySelector('.profile-intro_name, h3.profile-intro_name')
+    const name = nameEl?.textContent?.trim()
+    if (name) return name
+  } catch (err) {
+    await logger.warn(`[Auth] Failed to fetch user profile for userId ${userId}:`, err)
+  }
+  return undefined
+}
+
 export async function checkConnection(): Promise<{ isLoggedIn: boolean; username?: string; avatar?: string; userId?: string }> {
   try {
     await loadStoredSession()
     const html = await doclnClient.fetchText('/')
     const state = parseConnectionState(html)
+    if (state.isLoggedIn && state.userId) {
+      const profileName = await fetchUserProfileName(state.userId)
+      if (profileName) {
+        state.username = profileName
+      }
+    }
     await logger.info(`[Auth] Check Connection -> isLoggedIn: ${state.isLoggedIn}, Username: ${state.username || state.userId || 'N/A'}`)
     if (state.isLoggedIn) {
       await storage.set(STORAGE_USER_PROFILE_KEY, state)
@@ -176,6 +196,50 @@ export async function checkConnection(): Promise<{ isLoggedIn: boolean; username
     await logger.warn('[Auth] checkConnection failed:', err)
     return { isLoggedIn: false }
   }
+}
+
+export async function checkConnectionAction(): Promise<ExtensionSettingsActionResult> {
+  try {
+    const state = await checkConnection()
+    if (state.isLoggedIn) {
+      const usernameInfo = state.username ? ` (${state.username})` : (state.userId ? ` (ID: ${state.userId})` : '')
+      return {
+        success: true,
+        message: `Đã đăng nhập Hako thành công!${usernameInfo}`
+      }
+    } else {
+      return {
+        success: false,
+        message: 'Chưa đăng nhập Hako hoặc Session đã hết hạn.'
+      }
+    }
+  } catch (err) {
+    await logger.warn('[Auth] checkConnectionAction error:', err)
+    return {
+      success: false,
+      message: `Lỗi kiểm tra đăng nhập: ${String(err)}`
+    }
+  }
+}
+
+export async function ensureAuthenticatedSession(): Promise<boolean> {
+  try {
+    const cookies = await loadStoredSession()
+    if (cookies) {
+      return true
+    }
+    const creds = await storage.get<{ email?: string; password?: string }>(STORAGE_CREDENTIALS_KEY)
+    if (creds && typeof creds === 'object' && !('arrayBuffer' in creds)) {
+      const { email, password } = creds as { email?: string; password?: string }
+      if (email && password) {
+        await logger.info('[Auth] Session missing/expired. Attempting auto-login with stored credentials...')
+        return await login(email, password)
+      }
+    }
+  } catch (err) {
+    await logger.warn('[Auth] ensureAuthenticatedSession failed:', err)
+  }
+  return false
 }
 
 export async function login(email?: string, password?: string): Promise<boolean> {

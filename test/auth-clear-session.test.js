@@ -3,38 +3,38 @@
 const assert = require('node:assert/strict');
 const { clearSession, saveSessionCookies, loadStoredSession, doclnClient, initExtensionApi } = require('../dist/index');
 
-console.log('[Test Clear Session] Testing logout and session removal...');
+module.exports = async function runClearSessionTests() {
+  console.log('[Test Clear Session] Testing logout and session removal...');
 
-const storageMap = new Map();
-const mockNetworkRequests = [];
+  const storageMap = new Map();
+  const mockNetworkRequests = [];
 
-const mockNovelApi = {
-  version: '1.0.0',
-  extension: { id: 'test-extension' },
-  logger: {
-    info: async () => undefined,
-    warn: async () => undefined,
-    error: async () => undefined
-  },
-  network: {
-    fetchText: async (url, options) => {
-      mockNetworkRequests.push({ url, options });
-      return '<html><body>Logged out</body></html>';
+  const mockNovelApi = {
+    version: '1.0.0',
+    extension: { id: 'test-extension' },
+    logger: {
+      info: async () => undefined,
+      warn: async () => undefined,
+      error: async () => undefined
     },
-    fetchJson: async () => ({}),
-    fetchDataUrl: async () => ''
-  },
-  storage: {
-    get: async key => storageMap.get(key) || null,
-    set: async (key, value) => { storageMap.set(key, value); },
-    remove: async key => { storageMap.delete(key); },
-    createAssetUrl: async () => null
-  }
-};
+    network: {
+      fetchText: async (url, options) => {
+        mockNetworkRequests.push({ url, options });
+        return '<html><body>Logged out</body></html>';
+      },
+      fetchJson: async () => ({}),
+      fetchDataUrl: async () => ''
+    },
+    storage: {
+      get: async key => storageMap.get(key) || null,
+      set: async (key, value) => { storageMap.set(key, value); },
+      remove: async key => { storageMap.delete(key); },
+      createAssetUrl: async () => null
+    }
+  };
 
-initExtensionApi(mockNovelApi);
+  initExtensionApi(mockNovelApi);
 
-async function runTests() {
   // 1. Save session cookies
   const testCookie = 'XSRF-TOKEN=test_xsrf; ln_session=test_session_12345';
   await saveSessionCookies(testCookie);
@@ -69,8 +69,3 @@ async function runTests() {
 
   console.log('[Test Clear Session] All logout and session removal assertions passed! 🚀');
 }
-
-runTests().catch(err => {
-  console.error('[Test Clear Session] Test failed:', err);
-  process.exit(1);
-});

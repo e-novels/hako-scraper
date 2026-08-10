@@ -74,6 +74,11 @@
           "style": "primary"
         },
         {
+          "id": "checkConnectionAction",
+          "label": "Kiểm tra đăng nhập",
+          "style": "default"
+        },
+        {
           "id": "clearSession",
           "label": "Đăng xuất & Xóa Session"
         }

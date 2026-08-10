@@ -1,4 +1,4 @@
-import { network } from '../utilities'
+import { network, storage } from '../utilities'
 import { BASE_URL } from './index'
 
 export { BASE_URL }
@@ -16,16 +16,33 @@ export function buildEndpointUrl(pathname: string): string {
 
 export class DoclnClient {
   private storedCookies: string = ''
+  private sessionLoaded: boolean = false
 
   public setStoredCookies(cookies: string): void {
     this.storedCookies = cookies || ''
+    this.sessionLoaded = true
   }
 
   public getStoredCookies(): string {
     return this.storedCookies
   }
 
-  private prepareRequest(pathnameOrUrl: string, customHeaders?: Record<string, string>) {
+  public async ensureSessionLoaded(): Promise<void> {
+    if (this.sessionLoaded) return
+    try {
+      const cookies = await storage.get<string>('hako_session_cookie')
+      if (typeof cookies === 'string' && cookies.trim()) {
+        this.storedCookies = cookies
+      }
+    } catch {
+      // Ignore storage errors during initial session load
+    } finally {
+      this.sessionLoaded = true
+    }
+  }
+
+  private async prepareRequest(pathnameOrUrl: string, customHeaders?: Record<string, string>) {
+    await this.ensureSessionLoaded()
     const targetUrl = pathnameOrUrl.startsWith('http') ? pathnameOrUrl : buildEndpointUrl(pathnameOrUrl)
     const headers: Record<string, string> = { ...DEFAULT_HEADERS, ...customHeaders }
     if (this.storedCookies && !headers['Cookie']) {
@@ -35,22 +52,22 @@ export class DoclnClient {
   }
 
   public async fetchText(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
-    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, customHeaders)
     return network.fetchText(targetUrl, { headers, credentials: 'omit' })
   }
 
   public async fetchJson<T = unknown>(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<T> {
-    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, customHeaders)
     return network.fetchJson<T>(targetUrl, { headers, credentials: 'omit' })
   }
 
   public async fetchDataUrl(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
-    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, customHeaders)
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, customHeaders)
     return network.fetchDataUrl(targetUrl, { headers, credentials: 'omit' })
   }
 
   public async postForm<T = unknown>(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<T> {
-    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, {
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
       'X-Requested-With': 'XMLHttpRequest',
       ...customHeaders
@@ -64,7 +81,7 @@ export class DoclnClient {
   }
 
   public async postFormText(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<string> {
-    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, {
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, {
       'Content-Type': 'application/x-www-form-urlencoded',
       ...customHeaders
     })
@@ -77,7 +94,7 @@ export class DoclnClient {
   }
 
   public async postJson<T = unknown>(pathnameOrUrl: string, jsonPayload: unknown, customHeaders?: Record<string, string>): Promise<T> {
-    const { targetUrl, headers } = this.prepareRequest(pathnameOrUrl, {
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, {
       'Content-Type': 'application/json',
       'X-Livewire': '',
       ...customHeaders
