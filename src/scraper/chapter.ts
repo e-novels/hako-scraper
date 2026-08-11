@@ -1,7 +1,8 @@
 import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
 import { BASE_URL, doclnClient } from './client'
-import { extractArticleParagraphs } from './html'
+import { decryptChapterContent } from './decrypt'
+import { extractArticleParagraphs, extractNotesMap } from './html'
 
 function parseInteger(str: string): number {
   if (!str) return 0
@@ -11,7 +12,23 @@ function parseInteger(str: string): number {
 }
 
 export function parseChapterHtml(html: string, chapterRef: string): ScraperChapter {
-  const paragraphs = extractArticleParagraphs(html, '#chapter-content, .chapter-content, article')
+  // Step 1: Try to decrypt encrypted chapter content
+  const decryptedContent = decryptChapterContent(html)
+
+  // Step 2: Extract notes from the original HTML (notes are not encrypted)
+  const notesMap = extractNotesMap(html)
+
+  // Step 3: Parse paragraphs
+  let paragraphs: string[]
+
+  if (decryptedContent) {
+    // Encrypted chapter: wrap decrypted content in a container and parse
+    const wrappedHtml = `<div class="chapter-content">${decryptedContent}</div>`
+    paragraphs = extractArticleParagraphs(wrappedHtml, '.chapter-content', notesMap)
+  } else {
+    // Non-encrypted chapter: parse directly from original HTML
+    paragraphs = extractArticleParagraphs(html, '#chapter-content, .chapter-content, article', notesMap)
+  }
 
   const { document } = parseHTML(html)
   const titleEl = document.querySelector('.title-top, .chapter-title, h2, h1')
@@ -24,6 +41,8 @@ export function parseChapterHtml(html: string, chapterRef: string): ScraperChapt
   const canonicalLink = document.querySelector('link[rel="canonical"], meta[property="og:url"]')
   if (canonicalLink) {
     const href = canonicalLink.getAttribute('href') || canonicalLink.getAttribute('content') || ''
+    logger.info("canonicalLink", href);
+
     const bMatch = href.match(/\/truyen\/(\d+)/)
     if (bMatch) bookId = parseInt(bMatch[1], 10)
     const cMatch = href.match(/\/c(\d+)/)

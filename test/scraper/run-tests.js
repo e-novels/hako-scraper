@@ -4,6 +4,11 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const path = require('node:path')
 
+function readHtmlFixture(root, filename) {
+  const fixturePath = path.join(root, 'test', 'scraper', 'fixtures', filename)
+  return fs.readFileSync(fixturePath, 'utf8')
+}
+
 function readJsonFixture(root, filename) {
   const fixturePath = path.join(root, 'test', 'scraper', 'fixtures', filename)
   return JSON.parse(fs.readFileSync(fixturePath, 'utf8'))
@@ -13,7 +18,8 @@ module.exports = async function runScraperTests(root, manifest) {
   const searchFixture = readJsonFixture(root, 'search.json')
   const detail = readJsonFixture(root, 'book-detail.json')
   const chapter = readJsonFixture(root, 'chapter.json')
-  const html = fs.readFileSync(path.join(root, 'test', 'scraper', 'fixtures', 'chapter.html'), 'utf8')
+  const html = readHtmlFixture(root, 'chapter.html')
+  const encryptedHtml = readHtmlFixture(root, 'chapter-encrypted.html')
   assert.equal(manifest.icon, './public/icon.png')
   assert.ok(manifest.permissions.includes('network'))
   assert.ok(manifest.permissions.includes('reader'))
@@ -192,7 +198,8 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.deepEqual(logs, [])
     assert.deepEqual(extension.extractArticleParagraphs(html, '.chapter-content'), [
       'First HTML fixture paragraph.',
-      '<img src="https://images.weserv.nl/?url=https%3A%2F%2Fi1.hako.vip%2Fimages%2Fillustration.jpg" />\nSecond HTML fixture paragraph.'
+      '@{https://images.weserv.nl/?url=https%3A%2F%2Fi1.hako.vip%2Fimages%2Fillustration.jpg}',
+      'Second HTML fixture paragraph.'
     ])
     assert.deepEqual(
       extension.extractArticleParagraphs('<article class="chapter-content">One<br>Two</article>', '.chapter-content'),
@@ -266,6 +273,60 @@ module.exports = async function runScraperTests(root, manifest) {
       () => handlers.search({ filters: { title: 'rate-limited' }, page: 1, pageSize: 20 }),
       /HTTP 429/
     )
+
+    // --- Test decryptChapterContent ---
+    const decrypted = extension.decryptChapterContent(encryptedHtml)
+    assert.ok(decrypted, 'decryptChapterContent should return decrypted HTML')
+    assert.ok(decrypted.includes('Đây là đoạn văn thứ nhất'), 'decrypted content should contain paragraph text')
+    assert.ok(decrypted.includes('[note99901]'), 'decrypted content should contain note markers')
+    assert.ok(decrypted.includes('i.hako.vip'), 'decrypted content should contain image URLs')
+
+    // decryptChapterContent returns null for non-encrypted HTML
+    assert.equal(extension.decryptChapterContent(html), null)
+
+    // --- Test extractNotesMap ---
+    const notesMap = extension.extractNotesMap(encryptedHtml)
+    assert.equal(notesMap.size, 3, 'should extract 3 notes')
+    assert.equal(notesMap.get('note99901'), 'Đây là nội dung ghi chú thứ nhất từ dịch giả.')
+    assert.equal(notesMap.get('note99902'), 'Ghi chú thứ hai giải thích thuật ngữ.')
+    assert.equal(notesMap.get('note99903'), 'Ghi chú cuối cùng.')
+
+    // extractNotesMap returns empty map for HTML without notes
+    assert.equal(extension.extractNotesMap(html).size, 0)
+
+    // --- Test splitTextWithNotes ---
+    const testNotesMap = new Map([['note123', 'Note content here']])
+    assert.deepEqual(
+      extension.splitTextWithNotes('Some text [note123] and more.', testNotesMap),
+      ['Some text', '!{Note content here}', 'and more.']
+    )
+    assert.deepEqual(
+      extension.splitTextWithNotes('No notes here.', testNotesMap),
+      ['No notes here.']
+    )
+    assert.deepEqual(
+      extension.splitTextWithNotes('[note123]', testNotesMap),
+      ['!{Note content here}']
+    )
+
+    // --- Test extractArticleParagraphs with notes and images ---
+    const encNotesMap = extension.extractNotesMap(encryptedHtml)
+    const encDecrypted = extension.decryptChapterContent(encryptedHtml)
+    const wrappedHtml = `<div class="chapter-content">${encDecrypted}</div>`
+    const encParagraphs = extension.extractArticleParagraphs(wrappedHtml, '.chapter-content', encNotesMap)
+
+    // Should contain image entries
+    assert.ok(encParagraphs.some(p => p.startsWith('@{')), 'should contain image entries @{...}')
+    // Should contain note entries
+    assert.ok(encParagraphs.some(p => p.startsWith('!{')), 'should contain note entries !{...}')
+    // Should contain regular text
+    assert.ok(encParagraphs.some(p => p.includes('Đây là đoạn văn thứ nhất')), 'should contain regular text')
+    // Image URLs should be processed through weserv proxy
+    const imageEntry = encParagraphs.find(p => p.startsWith('@{'))
+    assert.ok(imageEntry.includes('images.weserv.nl'), 'image URLs should be proxied through weserv')
+    // Note content should be wrapped in !{}
+    const noteEntry = encParagraphs.find(p => p.startsWith('!{'))
+    assert.ok(noteEntry.includes('ghi chú'), 'note entries should contain note content')
     await extension.deactivate()
   }
 

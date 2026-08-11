@@ -235,8 +235,6 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
 
       const chapName = (chapLinkEl.textContent || chapLinkEl.getAttribute('title') || '').trim()
       const chapHref = chapLinkEl.getAttribute('href') || ''
-      const chapMatch = chapHref.match(/\/c(\d+)/)
-      const chapterId = chapMatch ? parseInt(chapMatch[1], 10) : (volIdx * 1000 + chapIdx + 1)
 
       // Chapter number belongs strictly to its parent volume, starting from 1 per volume
       const chapterNumber = chapIdx + 1
@@ -246,7 +244,7 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
       const isoDate = parseHakoDate(timeStr)
 
       chapters.push({
-        chapter_id: chapterId,
+        chapter_id: chapHref,
         chapter_name: chapName,
         chapter_number: chapterNumber,
         created_at: isoDate,

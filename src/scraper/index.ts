@@ -12,7 +12,8 @@ import { assertTemplateBookDetail, assertTemplateChapter } from './validation'
 
 import { ensureAuthenticatedSession } from './auth'
 
-export { extractArticleParagraphs } from './html'
+export { extractArticleParagraphs, extractNotesMap, splitTextWithNotes } from './html'
+export { decryptChapterContent } from './decrypt'
 export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './bookDetail'
 export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
 export { parseReviewsHtml, fetchReviews } from './rating'
