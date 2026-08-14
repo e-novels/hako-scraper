@@ -235,6 +235,25 @@ export async function fetchRepliesForComment(
   parentComment.total_reply = parentComment.replies.length
 }
 
+export function parseTotalCommentsFromHtml(html: string): number {
+  if (!html || !html.trim()) return 0
+  try {
+    const { document } = parseHTML(html)
+    const countEl = document.querySelector('.comments-count')
+    if (countEl && countEl.textContent) {
+      const parsed = parseInteger(countEl.textContent)
+      if (parsed > 0) return parsed
+    }
+  } catch {}
+
+  const match = html.match(/class=["'][^"']*comments-count[^"']*["'][^>]*>\s*\(([\d,.]+)\)\s*</i) ||
+                html.match(/Bình luận\s*<span[^>]*class=["'][^"']*comments-count[^"']*["'][^>]*>\s*\(([\d,.]+)\)\s*</i)
+  if (match && match[1]) {
+    return parseInteger(match[1])
+  }
+  return 0
+}
+
 export async function fetchComments(request: ScraperBookDetailRequest): Promise<ScraperCommentsPage> {
   const page = request.page || 1
   const isChapterTarget = request.commentTarget === 'chapter' || Boolean(request.targetRef)
@@ -246,12 +265,12 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
   if (isChapterTarget && request.targetRef) {
     type = 'chapter'
     targetPath = await resolveChapterUrl(request.targetRef)
-    const chapMatch = request.targetRef.match(/(\d+)/)
+    const chapMatch = request.targetRef.match(/\/c(\d+)/) || request.targetRef.match(/c(\d+)/) || request.targetRef.match(/(\d+)/)
     if (chapMatch) typeId = parseInt(chapMatch[1], 10)
   } else {
     type = 'series'
     targetPath = await resolveBookUrl(request.bookRef)
-    const bookMatch = request.bookRef.match(/(\d+)/)
+    const bookMatch = request.bookRef.match(/\/truyen\/(\d+)/) || request.bookRef.match(/(\d+)/)
     if (bookMatch) typeId = parseInt(bookMatch[1], 10)
   }
 
@@ -271,9 +290,17 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
     const canonicalLink = document.querySelector('link[rel="canonical"], meta[property="og:url"]')
     if (canonicalLink) {
       const href = canonicalLink.getAttribute('href') || canonicalLink.getAttribute('content') || ''
-      const match = href.match(/\/truyen\/(\d+)/) || href.match(/\/c(\d+)/)
+      const match = type === 'chapter'
+        ? (href.match(/\/c(\d+)/) || href.match(/c(\d+)/))
+        : (href.match(/\/truyen\/(\d+)/) || href.match(/(\d+)/))
       if (match) typeId = parseInt(match[1], 10)
     }
+  }
+
+  let totalCommentsCount: number | undefined
+  if (pageHtml) {
+    const count = parseTotalCommentsFromHtml(pageHtml)
+    if (count > 0) totalCommentsCount = count
   }
 
   const refererUrl = `${BASE_URL}${targetPath}`
@@ -402,10 +429,15 @@ export async function fetchComments(request: ScraperBookDetailRequest): Promise<
     }
   }
 
+  const pageSize = comments.length || 10
   const pagination: ScraperPagination = {
     page,
-    pageSize: comments.length || 10,
-    hasNextPage
+    pageSize,
+    hasNextPage,
+    ...(totalCommentsCount !== undefined ? {
+      totalItems: totalCommentsCount,
+      totalPages: Math.ceil(totalCommentsCount / pageSize)
+    } : {})
   }
 
   return {
