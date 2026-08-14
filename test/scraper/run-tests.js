@@ -198,7 +198,7 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.deepEqual(logs, [])
     assert.deepEqual(extension.extractArticleParagraphs(html, '.chapter-content'), [
       'First HTML fixture paragraph.',
-      '@{https://images.weserv.nl/?url=https%3A%2F%2Fi1.hako.vip%2Fimages%2Fillustration.jpg}',
+      '@{https://i1.hako.vip/images/illustration.jpg}',
       'Second HTML fixture paragraph.'
     ])
     assert.deepEqual(
@@ -325,9 +325,9 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.ok(encParagraphs.some(p => p.startsWith('!{')), 'should contain note entries !{...}')
     // Should contain regular text
     assert.ok(encParagraphs.some(p => p.includes('Đây là đoạn văn thứ nhất')), 'should contain regular text')
-    // Image URLs should be processed through weserv proxy
+    // Image URLs should return direct normalized image URL
     const imageEntry = encParagraphs.find(p => p.startsWith('@{'))
-    assert.ok(imageEntry.includes('images.weserv.nl'), 'image URLs should be proxied through weserv')
+    assert.ok(imageEntry.includes('https://i.hako.vip/'), 'image URLs should return direct normalized URL')
     // Note content should be wrapped in !{}
     const noteEntry = encParagraphs.find(p => p.startsWith('!{'))
     assert.ok(noteEntry.includes('ghi chú'), 'note entries should contain note content')

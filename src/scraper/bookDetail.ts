@@ -29,30 +29,8 @@ function resolveUrl(urlStr: string): string {
   }
 }
 
-function parseInteger(str: string): number {
-  if (!str) return 0
-  const cleaned = str.replace(/[^\d]/g, '')
-  const val = parseInt(cleaned, 10)
-  return Number.isNaN(val) ? 0 : val
-}
+import { parseHakoDate, parseInteger } from './chapter'
 
-function parseHakoDate(dateStr: string): string {
-  if (!dateStr) return new Date().toISOString()
-  const trimmed = dateStr.trim()
-  const dmyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}):(\d{1,2}))?$/)
-  if (dmyMatch) {
-    const day = parseInt(dmyMatch[1], 10)
-    const month = parseInt(dmyMatch[2], 10) - 1
-    const year = parseInt(dmyMatch[3], 10)
-    const hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0
-    const minute = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0
-    const d = new Date(Date.UTC(year, month, day, hour, minute))
-    if (!Number.isNaN(d.getTime())) return d.toISOString()
-  }
-  const parsed = Date.parse(trimmed)
-  if (!Number.isNaN(parsed)) return new Date(parsed).toISOString()
-  return new Date().toISOString()
-}
 
 export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookDetail {
   const { document } = parseHTML(html)
@@ -230,8 +208,9 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
   volumeNodes.forEach((volNode, volIdx) => {
     const volTitleEl = volNode.querySelector('.sect-title, .volume-name, .sect-header')
     const volumeName = volTitleEl?.textContent?.trim() || `Tập ${volIdx + 1}`
-    const volIdAttr = volNode.getAttribute('data-id') || volNode.getAttribute('id')
-    const volumeId = volIdAttr ? String(volIdAttr) : undefined
+    const rawVolId = volNode.getAttribute('data-id') || volNode.getAttribute('id') || volNode.querySelector('.sect-header')?.getAttribute('id') || ''
+    const cleanVolId = rawVolId.replace(/^volume_/, '').trim()
+    const volumeId = cleanVolId ? cleanVolId : undefined
     const volumeNumber = volIdx + 1
 
     const chapters: ScraperBookDetail['volumes'][number]['chapters'] = []
@@ -256,7 +235,7 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
       const chapterNumber = chapIdx + 1
 
       const timeEl = chapEl.querySelector('.chapter-time')
-      const timeStr = timeEl?.textContent?.trim() || ''
+      const timeStr = timeEl?.getAttribute('datetime') || timeEl?.getAttribute('title') || timeEl?.textContent?.trim() || ''
       const isoDate = parseHakoDate(timeStr)
 
       chapters.push({

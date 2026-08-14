@@ -2,7 +2,7 @@ export const BASE_URL = 'https://docln.sbs'
 
 import { logger } from '../utilities'
 import { fetchBookDetail, parseBookDetailHtml, resolveBookRatingUrl, resolveBookUrl } from './bookDetail'
-import { fetchChapter, parseChapterHtml, resolveChapterUrl } from './chapter'
+import { convertChapterImagesToBase64, fetchChapter, parseChapterHtml, resolveChapterUrl } from './chapter'
 import { doclnClient } from './client'
 import { fetchImageAsDataUrl } from './image'
 import { fetchComments, parseCommentGroupHtml } from './comment'
@@ -15,7 +15,7 @@ import { ensureAuthenticatedSession } from './auth'
 export { extractArticleParagraphs, extractNotesMap, splitTextWithNotes } from './html'
 export { decryptChapterContent } from './decrypt'
 export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './bookDetail'
-export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
+export { convertChapterImagesToBase64, parseChapterHtml, fetchChapter, resolveChapterUrl, parseHakoDate, parseChapterNameFromDoc } from './chapter'
 export { parseReviewsHtml, fetchReviews } from './rating'
 export { parseCommentGroupHtml, fetchComments } from './comment'
 export { parseSearchResultsHtml, executeSearch, getFilterOptions } from './search'
@@ -115,7 +115,9 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
         if (String(chapterRef) === '301' || String(chapterRef) === 'invalid' || String(chapterRef) === 'test') {
           const response = await doclnClient.fetchJson<TemplateChapter>(`/api/chapters/${chapterRef}`)
           assertTemplateChapter(response)
-          return toChapter(response)
+          const chap = toChapter(response)
+          chap.content = await convertChapterImagesToBase64(chap.content)
+          return chap
         }
         throw err
       }

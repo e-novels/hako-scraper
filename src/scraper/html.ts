@@ -1,12 +1,12 @@
 import { parseHTML } from 'linkedom'
-import { normalizeImageUrl, wrapWeservUrl } from './image'
+import { normalizeImageUrl } from './image'
 
 function normalizeParagraph(value: string | null): string {
   return (value ?? '').replace(/\s+/g, ' ').trim()
 }
 
 /**
- * Extract image URL from an element, returning it wrapped as `@{weservUrl}`.
+ * Extract image URL from an element, returning it wrapped as `@{imageUrl}`.
  * Returns null if no image is found.
  */
 function extractImageEntry(element: Element): string | null {
@@ -23,8 +23,7 @@ function extractImageEntry(element: Element): string | null {
   if (!rawSource) return null
 
   const source = normalizeImageUrl(rawSource)
-  const weservSource = wrapWeservUrl(source)
-  return `@{${weservSource}}`
+  return `@{${source}}`
 }
 
 /**

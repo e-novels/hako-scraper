@@ -6,7 +6,7 @@ export { extractArticleParagraphs, extractNotesMap, splitTextWithNotes } from '.
 export { decryptChapterContent } from './scraper/decrypt'
 export { parseSearchResultsHtml, executeSearch, getFilterOptions } from './scraper/search'
 export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './scraper/bookDetail'
-export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './scraper/chapter'
+export { parseChapterHtml, fetchChapter, resolveChapterUrl, parseHakoDate, parseChapterNameFromDoc } from './scraper/chapter'
 export { parseReviewsHtml, fetchReviews } from './scraper/rating'
 export { parseCommentGroupHtml, fetchComments } from './scraper/comment'
 export { login, checkConnection, checkConnectionAction, fetchUserProfileName, ensureAuthenticatedSession, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, saveSessionCookies, loadStoredSession } from './scraper/auth'

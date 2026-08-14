@@ -28,6 +28,7 @@ async function main() {
   await require('./auth-check-connection.test')()
   await require('./comment-guest-session.test')()
   await require('./string-ids.test')()
+  await require('./chapter-parsing.test')()
   await require(runner)(root, manifest)
 }
 
