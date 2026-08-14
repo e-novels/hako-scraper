@@ -35,36 +35,33 @@ function parseHakoDate(dateStr: string): string {
 export function parseReviewsHtml(html: string): ScraperReview[] {
   const { document } = parseHTML(html)
   const reviews: ScraperReview[] = []
-  const seenIds = new Set<number>()
+  const seenIds = new Set<string>()
 
   const candidateNodes = Array.from(document.querySelectorAll('[wire\\:snapshot], .mt-5'))
   const items = candidateNodes.filter(node => {
     return node.querySelector('a[href*="/thanh-vien/"], .ln-username, .ln-comment-content') !== null
   })
 
-  items.forEach((node, index) => {
+  items.forEach((node) => {
     const snapshot = node.getAttribute('wire:snapshot') || ''
-    let interactionId = 0
+    let interactionId: string | undefined
     if (snapshot) {
       const keyMatch = snapshot.match(/&quot;key&quot;\s*:\s*(\d+)/) || snapshot.match(/"key"\s*:\s*(\d+)/)
       if (keyMatch) {
-        interactionId = parseInt(keyMatch[1], 10)
+        interactionId = keyMatch[1]
       }
+    }
+
+    if (interactionId) {
+      if (seenIds.has(interactionId)) return
+      seenIds.add(interactionId)
     }
 
     const userLink = node.querySelector('a[href*="/thanh-vien/"], .ln-username')
     const href = userLink?.getAttribute('href') || ''
     const userMatch = href.match(/\/thanh-vien\/(\d+)/)
-    const userId = userMatch ? parseInt(userMatch[1], 10) : 0
+    const userId = userMatch ? userMatch[1] : undefined
     const userName = userLink?.textContent?.trim() || 'Ẩn danh'
-
-    if (!interactionId) {
-      interactionId = userId ? (userId * 100 + index + 1) : index + 1
-    }
-    while (seenIds.has(interactionId)) {
-      interactionId += 1
-    }
-    seenIds.add(interactionId)
 
     const imgEl = node.querySelector('img.rounded-full, img[src*="noava"], img')
     const avatarSrc = imgEl?.getAttribute('src') || imgEl?.getAttribute('data-src') || ''
@@ -96,8 +93,8 @@ export function parseReviewsHtml(html: string): ScraperReview[] {
     const createdAt = parseHakoDate(timeStr)
 
     reviews.push({
-      interaction_id: interactionId,
-      user_id: userId,
+      ...(interactionId !== undefined ? { interaction_id: interactionId } : {}),
+      ...(userId !== undefined ? { user_id: userId } : {}),
       user_name: userName,
       avatar,
       value,

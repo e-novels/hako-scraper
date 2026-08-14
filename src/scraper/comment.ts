@@ -47,14 +47,14 @@ function processContentImages(contentEl: Element | null): string {
 }
 
 function parseSingleCommentItem(itemEl: Element, _roomId: number | string = 0): ScraperComment {
-  const commentIdAttr = itemEl.getAttribute('data-comment') || itemEl.getAttribute('id') || '0'
-  const socket_id = parseInteger(commentIdAttr) || commentIdAttr
+  const commentIdAttr = itemEl.getAttribute('data-comment') || itemEl.getAttribute('id')?.replace(/^ln-comment-/, '')
+  const socket_id = commentIdAttr ? String(commentIdAttr) : undefined
 
   const usernameEl = itemEl.querySelector('.ln-username')
   const user_name = usernameEl?.textContent?.trim() || 'Vô danh'
   const userHref = usernameEl?.getAttribute('href') || ''
   const userMatch = userHref.match(/\/thanh-vien\/(\d+)/)
-  const user_id = userMatch ? parseInt(userMatch[1], 10) : 0
+  const user_id = userMatch ? String(userMatch[1]) : undefined
 
   const imgEl = itemEl.querySelector('img')
   let rawAvatar = imgEl?.getAttribute('src') || imgEl?.getAttribute('data-src') || ''
@@ -77,14 +77,21 @@ function parseSingleCommentItem(itemEl: Element, _roomId: number | string = 0): 
   const is_like = doLikeEl?.classList.contains('liked') || false
 
   const chapLinkEl = itemEl.querySelector('span.text-sm a[href*="/c"]')
-  const chapter_ref = chapLinkEl?.getAttribute('href') || null
+  let chapter_ref = chapLinkEl?.getAttribute('href') || null
   const chapter_title = chapLinkEl?.textContent?.trim() || null
-  const chapterMatch = chapter_ref ? chapter_ref.match(/\/c(\d+)/) || chapter_ref.match(/(\d+)/) : null
-  const chapter_id = chapterMatch ? parseInt(chapterMatch[1], 10) : (chapter_ref || undefined)
+  let chapter_id: string | undefined
+  if (chapter_ref) {
+    if (chapter_ref.startsWith('http://') || chapter_ref.startsWith('https://')) {
+      try {
+        chapter_ref = new URL(chapter_ref).pathname
+      } catch {}
+    }
+    chapter_id = chapter_ref.startsWith('/') ? chapter_ref : `/${chapter_ref}`
+  }
 
   const commentObj: ScraperComment = {
-    socket_id,
-    user_id,
+    ...(socket_id !== undefined ? { socket_id } : {}),
+    ...(user_id !== undefined ? { user_id } : {}),
     user_name,
     avatar,
     content,

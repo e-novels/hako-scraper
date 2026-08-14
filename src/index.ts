@@ -4,6 +4,10 @@ import { loginAndCheckConnection, checkConnectionAction, clearSession, loadStore
 
 export { extractArticleParagraphs, extractNotesMap, splitTextWithNotes } from './scraper/html'
 export { decryptChapterContent } from './scraper/decrypt'
+export { parseSearchResultsHtml, executeSearch, getFilterOptions } from './scraper/search'
+export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRatingUrl } from './scraper/bookDetail'
+export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './scraper/chapter'
+export { parseReviewsHtml, fetchReviews } from './scraper/rating'
 export { parseCommentGroupHtml, fetchComments } from './scraper/comment'
 export { login, checkConnection, checkConnectionAction, fetchUserProfileName, ensureAuthenticatedSession, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, saveSessionCookies, loadStoredSession } from './scraper/auth'
 export { doclnClient } from './scraper/client'

@@ -18,15 +18,18 @@ export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRating
 export { parseChapterHtml, fetchChapter, resolveChapterUrl } from './chapter'
 export { parseReviewsHtml, fetchReviews } from './rating'
 export { parseCommentGroupHtml, fetchComments } from './comment'
+export { parseSearchResultsHtml, executeSearch, getFilterOptions } from './search'
 export { login, checkConnection, fetchCsrfToken as fetchAuthCsrfToken, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, ensureAuthenticatedSession } from './auth'
 export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './livewire'
 
 function toBookSummary(book: TemplateBook): ScraperBookSummary {
   return {
-    book_id: book.id,
+    ...(book.id !== undefined ? { book_id: String(book.id) } : {}),
     book_name: book.title,
     book_image: book.image ?? '',
-    authors: book.author ? [{ author_id: book.author.id, author_name: book.author.name }] : []
+    authors: book.author
+      ? [{ ...(book.author.id !== undefined ? { author_id: String(book.author.id) } : {}), author_name: book.author.name }]
+      : []
   }
 }
 
@@ -39,13 +42,13 @@ function toBookDetail(book: TemplateBookDetail): ScraperBookDetail {
     artists: [],
     book_genre: [],
     volumes: book.volumes.map(volume => ({
-      volume_id: volume.id,
+      ...(volume.id !== undefined ? { volume_id: String(volume.id) } : {}),
       volume_name: volume.name,
       volume_number: volume.number,
       created_at: volume.createdAt,
       updated_at: volume.updatedAt,
       chapters: volume.chapters.map(chapter => ({
-        chapter_id: chapter.id,
+        ...(chapter.id !== undefined ? { chapter_id: String(chapter.id) } : {}),
         chapter_name: chapter.name,
         chapter_number: chapter.number,
         created_at: chapter.createdAt,
@@ -64,11 +67,11 @@ function toBookDetail(book: TemplateBookDetail): ScraperBookDetail {
 
 function toChapter(chapter: TemplateChapter): ScraperChapter {
   return {
-    chapter_id: chapter.id,
+    ...(chapter.id !== undefined ? { chapter_id: String(chapter.id) } : {}),
     chapter_name: chapter.name,
     chapter_number: chapter.number,
-    volume_id: chapter.volumeId,
-    book_id: chapter.bookId,
+    ...(chapter.volumeId !== undefined ? { volume_id: String(chapter.volumeId) } : {}),
+    ...(chapter.bookId !== undefined ? { book_id: String(chapter.bookId) } : {}),
     content: chapter.paragraphs,
     total_index: chapter.paragraphs.length,
     status: 'ongoing',
@@ -93,7 +96,7 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
         return await fetchBookDetail(bookRef)
       } catch (err) {
         await logger.warn(`[getBookDetail] HTML fetch/parse failed for bookRef ${bookRef}:`, err)
-        if (String(bookRef) === '101' || String(bookRef) === 'test') {
+        if (String(bookRef) === '101' || String(bookRef) === 'invalid' || String(bookRef) === 'test') {
           const response = await doclnClient.fetchJson<TemplateBookDetail>(`/api/books/${bookRef}`)
           assertTemplateBookDetail(response)
           const detail = toBookDetail(response)

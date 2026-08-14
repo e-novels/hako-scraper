@@ -10,6 +10,14 @@ export function saveBookSlug(bookId: number | string, href: string): void {
   const idStr = String(bookId).trim()
   const cleanHref = href.startsWith('/') ? href : `/${href}`
   bookSlugMap.set(idStr, cleanHref)
+  const numMatch = idStr.match(/^(\d+)/)
+  if (numMatch && numMatch[1] !== idStr) {
+    bookSlugMap.set(numMatch[1], cleanHref)
+  }
+  const slugMatch = cleanHref.match(/\/truyen\/([^\s/?#]+)/)
+  if (slugMatch && slugMatch[1]) {
+    bookSlugMap.set(slugMatch[1], cleanHref)
+  }
 }
 
 function resolveUrl(urlStr: string): string {
@@ -49,24 +57,21 @@ function parseHakoDate(dateStr: string): string {
 export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookDetail {
   const { document } = parseHTML(html)
 
-  let bookId = 0
-  if (typeof bookRef === 'number') {
-    bookId = bookRef
-  } else if (typeof bookRef === 'string') {
-    const numMatch = bookRef.match(/(\d+)/)
-    if (numMatch) bookId = parseInt(numMatch[1], 10)
-  }
-
-  const canonicalLink = document.querySelector('link[rel="canonical"], meta[property="og:url"]')
+  let bookId = ''
+  const canonicalLink = document.querySelector('link[rel="canonical"], meta[property="og:url"], .series-name a, h1.series-name a, .series-title a')
   if (canonicalLink) {
     const href = canonicalLink.getAttribute('href') || canonicalLink.getAttribute('content') || ''
-    const match = href.match(/\/truyen\/(\d+)/)
-    if (match) bookId = parseInt(match[1], 10)
+    const match = href.match(/\/truyen\/([^\s/?#]+)/)
+    if (match) bookId = match[1]
+  }
+  if (!bookId) {
+    const cleanRef = String(bookRef).trim().replace(/^\/+/, '').replace(/^truyen\//, '')
+    bookId = cleanRef
   }
 
   // Name
   const titleEl = document.querySelector('.series-name a, .series-name, h1.series-name, .series-title a')
-  const bookName = (titleEl?.textContent || titleEl?.getAttribute('title') || '').trim() || `Truyện ${bookId}`
+  const bookName = (titleEl?.textContent || titleEl?.getAttribute('title') || '').trim() || (bookId ? `Truyện ${bookId}` : 'Truyện')
 
   // Alternate titles
   const bookSubNames: string[] = []
@@ -93,12 +98,12 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
   bookImage = resolveUrl(bookImage)
 
   // Information items (Authors, Artists, Status)
-  const authors: Array<{ author_id: number; author_name: string }> = []
-  const artists: Array<{ artist_id: number; artist_name: string }> = []
+  const authors: Array<{ author_id?: string; author_name: string }> = []
+  const artists: Array<{ artist_id?: string; artist_name: string }> = []
   let status: 'show' | 'hidden' | 'ongoing' | 'completed' = 'ongoing'
 
   const infoItems = Array.from(document.querySelectorAll('.info-item, .series-information .info-name, .series-info .info-item, .series-owner'))
-  infoItems.forEach((item, index) => {
+  infoItems.forEach((item) => {
     const labelEl = item.querySelector('.info-name, font')
     const valueEl = item.querySelector('.info-value')
     const textContent = item.textContent || ''
@@ -106,13 +111,13 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
     if (textContent.includes('Tác giả') || labelEl?.textContent?.includes('Tác giả')) {
       const name = (valueEl?.textContent || textContent.replace(/tác giả:?/i, '')).trim()
       if (name && !authors.some(a => a.author_name === name)) {
-        authors.push({ author_id: index + 1, author_name: name })
+        authors.push({ author_name: name })
       }
     }
     if (textContent.includes('Họa sĩ') || labelEl?.textContent?.includes('Họa sĩ')) {
       const name = (valueEl?.textContent || textContent.replace(/họa sĩ:?/i, '')).trim()
       if (name && !artists.some(a => a.artist_name === name)) {
-        artists.push({ artist_id: index + 1, artist_name: name })
+        artists.push({ artist_name: name })
       }
     }
     if (textContent.includes('Tên khác') && valueEl?.textContent) {
@@ -133,19 +138,22 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
     const authorEl = document.querySelector('.series-owner, .author')
     if (authorEl) {
       const name = authorEl.textContent?.replace(/tác giả:?/i, '').trim()
-      if (name) authors.push({ author_id: 1, author_name: name })
+      if (name) authors.push({ author_name: name })
     }
   }
 
   // Genres
-  const bookGenre: Array<{ category_id: number; category_name: string }> = []
+  const bookGenre: Array<{ category_id?: string; category_name: string }> = []
   const genreEls = document.querySelectorAll('.series-gernes .series-gerne-item, .series-gernes a, .genre_label')
-  genreEls.forEach((el, index) => {
+  genreEls.forEach((el) => {
     const genreName = el.textContent?.trim()
-    const genreIdStr = el.getAttribute('data-genre-id') || el.getAttribute('data-id') || String(index + 1)
-    const genreId = parseInteger(genreIdStr) || (index + 1)
+    const genreIdStr = el.getAttribute('data-genre-id') || el.getAttribute('data-id')
     if (genreName && !bookGenre.some(g => g.category_name === genreName)) {
-      bookGenre.push({ category_id: genreId, category_name: genreName })
+      if (genreIdStr) {
+        bookGenre.push({ category_id: String(genreIdStr), category_name: genreName })
+      } else {
+        bookGenre.push({ category_name: genreName })
+      }
     }
   })
 
@@ -223,7 +231,7 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
     const volTitleEl = volNode.querySelector('.sect-title, .volume-name, .sect-header')
     const volumeName = volTitleEl?.textContent?.trim() || `Tập ${volIdx + 1}`
     const volIdAttr = volNode.getAttribute('data-id') || volNode.getAttribute('id')
-    const volumeId = parseInteger(volIdAttr || '') || (volIdx + 1)
+    const volumeId = volIdAttr ? String(volIdAttr) : undefined
     const volumeNumber = volIdx + 1
 
     const chapters: ScraperBookDetail['volumes'][number]['chapters'] = []
@@ -234,7 +242,15 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
       if (!chapLinkEl) return
 
       const chapName = (chapLinkEl.textContent || chapLinkEl.getAttribute('title') || '').trim()
-      const chapHref = chapLinkEl.getAttribute('href') || ''
+      let chapHref = chapLinkEl.getAttribute('href') || ''
+      if (chapHref.startsWith('http://') || chapHref.startsWith('https://')) {
+        try {
+          chapHref = new URL(chapHref).pathname
+        } catch {}
+      }
+      if (!chapHref.startsWith('/')) {
+        chapHref = `/${chapHref}`
+      }
 
       // Chapter number belongs strictly to its parent volume, starting from 1 per volume
       const chapterNumber = chapIdx + 1
@@ -259,7 +275,7 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
     const lastChapDate = chapters[chapters.length - 1]?.created_at || firstChapDate
 
     volumes.push({
-      volume_id: volumeId,
+      ...(volumeId ? { volume_id: volumeId } : {}),
       volume_name: volumeName,
       volume_number: volumeNumber,
       created_at: firstChapDate,
@@ -275,13 +291,19 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
       const chapters: ScraperBookDetail['volumes'][number]['chapters'] = []
       chapterEls.forEach((chapLinkEl, chapIdx) => {
         const chapName = (chapLinkEl.textContent || chapLinkEl.getAttribute('title') || '').trim()
-        const chapHref = chapLinkEl.getAttribute('href') || ''
-        const chapMatch = chapHref.match(/\/c(\d+)/)
-        const chapterId = chapMatch ? parseInt(chapMatch[1], 10) : chapIdx + 1
+        let chapHref = chapLinkEl.getAttribute('href') || ''
+        if (chapHref.startsWith('http://') || chapHref.startsWith('https://')) {
+          try {
+            chapHref = new URL(chapHref).pathname
+          } catch {}
+        }
+        if (!chapHref.startsWith('/')) {
+          chapHref = `/${chapHref}`
+        }
 
         const isoDate = new Date().toISOString()
         chapters.push({
-          chapter_id: chapterId,
+          chapter_id: chapHref,
           chapter_name: chapName,
           chapter_number: chapIdx + 1,
           created_at: isoDate,
@@ -291,7 +313,6 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
 
       const firstChapDate = chapters[0]?.created_at || new Date().toISOString()
       volumes.push({
-        volume_id: 1,
         volume_name: 'Mặc định',
         volume_number: 1,
         created_at: firstChapDate,
@@ -346,9 +367,10 @@ export async function resolveBookUrl(bookRef: string): Promise<string> {
     const links = Array.from(document.querySelectorAll('a[href*="/truyen/"]'))
     for (const link of links) {
       const href = link.getAttribute('href') || ''
-      const match = href.match(/\/truyen\/(\d+)/)
-      if (match && match[1] === cleanId && href.includes('-')) {
+      const match = href.match(/\/truyen\/([^\s/?#]+)/)
+      if (match && (match[1] === cleanId || match[1].startsWith(`${cleanId}-`))) {
         saveBookSlug(cleanId, href)
+        saveBookSlug(match[1], href)
         return href
       }
     }

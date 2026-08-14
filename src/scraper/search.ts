@@ -145,7 +145,7 @@ export async function getFilterOptions(
 export function parseSearchResultsHtml(html: string, page: number, pageSize: number): ScraperSearchResponse {
   const { document } = parseHTML(html)
   const items: ScraperBookSummary[] = []
-  const seenIds = new Set<number>()
+  const seenIds = new Set<string>()
 
   const itemNodes = Array.from(document.querySelectorAll('.thumb-item-flow, .thumb-section-flow, .series-detail, .series-item'))
 
@@ -157,10 +157,10 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     if (!bookName) continue
 
     const href = titleEl.getAttribute('href') || titleEl.querySelector('a')?.getAttribute('href') || ''
-    const match = href.match(/\/truyen\/(\d+)/)
+    const match = href.match(/\/truyen\/([^\s/?#]+)/)
     if (!match) continue
 
-    const bookId = parseInt(match[1], 10)
+    const bookId = match[1]
     if (!bookId || seenIds.has(bookId)) continue
 
     seenIds.add(bookId)
@@ -179,12 +179,12 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     }
     bookImage = resolveUrl(bookImage)
 
-    const authors: Array<{ author_id: number; author_name: string }> = []
+    const authors: Array<{ author_id?: string; author_name: string }> = []
     const authorEl = node.querySelector('.series-owner, .author, .thumb-detail .author')
     if (authorEl) {
       const authorText = authorEl.textContent?.replace(/tác giả:?/i, '').trim()
       if (authorText) {
-        authors.push({ author_id: 1, author_name: authorText })
+        authors.push({ author_name: authorText })
       }
     }
 

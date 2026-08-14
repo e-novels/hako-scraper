@@ -28,12 +28,12 @@ const comments = parseCommentGroupHtml(sampleHtml, 100)
 
 assert.strictEqual(comments.length, 2, 'Should parse 2 comments total')
 assert.strictEqual(comments[0].chapter_id, undefined, 'Series comment should not have chapter_id')
-assert.strictEqual(comments[1].chapter_id, 500, 'Chapter comment should parse chapter_id as 500')
+assert.strictEqual(comments[1].chapter_id, '/truyen/100/c500-chuong-1', 'Chapter comment should parse chapter_id as full path')
 assert.strictEqual(comments[1].chapter_name, 'Chương 01', 'Chapter comment should parse chapter_name')
 
 // Filter for series scope:
 const seriesOnly = comments.filter(c => c.chapter_id === undefined)
 assert.strictEqual(seriesOnly.length, 1, 'Series scope filter should yield only 1 series comment')
-assert.strictEqual(seriesOnly[0].socket_id, 1, 'Filtered series comment ID should be 1')
+assert.strictEqual(seriesOnly[0].socket_id, '1', 'Filtered series comment ID should be string 1')
 
 console.log('[Test Comment Scope] All comment scope unit tests passed successfully! 🚀')

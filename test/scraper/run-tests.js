@@ -103,7 +103,7 @@ module.exports = async function runScraperTests(root, manifest) {
               </html>
             `
           }
-          if (requestUrl.pathname.startsWith('/truyen/27926')) {
+          if (requestUrl.pathname.startsWith('/truyen/27926') && !requestUrl.pathname.includes('/c')) {
             return `
               <html>
               <head><meta name="csrf-token" content="mock-csrf-token"></head>
@@ -128,7 +128,7 @@ module.exports = async function runScraperTests(root, manifest) {
               </html>
             `
           }
-          if (requestUrl.pathname.startsWith('/c558990')) {
+          if (requestUrl.pathname.includes('c558990') || requestUrl.pathname.startsWith('/c558990')) {
             return `
               <html>
               <head><meta name="csrf-token" content="mock-csrf-token"></head>
@@ -214,53 +214,57 @@ module.exports = async function runScraperTests(root, manifest) {
 
     // Test search
     const searchResult = await handlers.search({ filters: { query: 'fixture', selectgenres: ['1', '2'], rejectgenres: ['3', '4'] }, page: 1, pageSize: 20 })
-    assert.equal(searchResult.items[0].book_id, 101)
+    assert.equal(searchResult.items[0].book_id, '101-test-book')
     assert.equal(searchResult.items[0].book_name, 'Test Book')
     assert.equal(searchResult.items[0].book_image, 'data:image/jpeg;base64,Y292ZXI=')
+    assert.deepEqual(searchResult.items[0].authors, [{ author_name: 'Author Test' }])
     const lastSearchUrl = new URL(requests.find(url => new URL(url).pathname === '/tim-kiem-nang-cao' && new URL(url).searchParams.get('title') === 'fixture'))
     assert.equal(lastSearchUrl.searchParams.get('title'), 'fixture')
     assert.equal(lastSearchUrl.searchParams.get('selectgenres'), '1,2')
     assert.equal(lastSearchUrl.searchParams.get('rejectgenres'), '3,4')
 
     const bookDetail = await handlers.getBookDetail({ bookRef: '101' })
-    assert.equal(bookDetail.volumes[0].chapters[0].chapter_id, 301)
+    assert.equal(bookDetail.volumes[0].chapters[0].chapter_id, '301')
     assert.equal(bookDetail.book_image, 'data:image/jpeg;base64,ZGV0YWls')
 
     const htmlBookDetail = await handlers.getBookDetail({ bookRef: '27926' })
+    assert.equal(htmlBookDetail.book_id, '27926-test-book')
     assert.equal(htmlBookDetail.book_name, 'HTML Test Book')
-    assert.equal(htmlBookDetail.volumes[0].chapters[0].chapter_id, 558990)
+    assert.equal(htmlBookDetail.volumes[0].volume_id, '1')
+    assert.equal(htmlBookDetail.volumes[0].chapters[0].chapter_id, '/truyen/27926-test-book/c558990-chuong-1')
     assert.equal(htmlBookDetail.total_index, 12345)
     assert.equal(htmlBookDetail.views, 67890)
 
-    const htmlChapter = await handlers.getChapter({ chapterRef: '558990' })
+    const htmlChapter = await handlers.getChapter({ chapterRef: htmlBookDetail.volumes[0].chapters[0].chapter_id })
+    assert.equal(htmlChapter.chapter_id, '/truyen/27926-test-book/c558990-chuong-1')
     assert.equal(htmlChapter.content.length, 2)
     assert.equal(htmlChapter.content[0], 'Paragraph 1 from HTML chapter.')
 
     const reviews = await handlers.getReviews({ bookRef: '27926' })
     assert.equal(reviews.length, 1)
-    assert.equal(reviews[0].interaction_id, 1536)
-    assert.equal(reviews[0].user_id, 148873)
+    assert.equal(reviews[0].interaction_id, '1536')
+    assert.equal(reviews[0].user_id, '148873')
     assert.equal(reviews[0].user_name, 'Miyazumiiiiiii')
     assert.equal(reviews[0].value, 4)
     assert.equal(reviews[0].message, 'nội dung ổn')
 
     const commentsRes = await handlers.getComments({ bookRef: '27926' })
     assert.equal(commentsRes.data.length, 1)
-    assert.equal(commentsRes.data[0].socket_id, 3086692)
+    assert.equal(commentsRes.data[0].socket_id, '3086692')
     assert.equal(commentsRes.data[0].user_name, 'kaguki')
     assert.equal(commentsRes.data[0].content, 'Bình luận test')
     assert.equal(commentsRes.data[0].total_like, 5)
     assert.equal(commentsRes.data[0].replies.length, 2)
-    assert.equal(commentsRes.data[0].replies[0].socket_id, 3127671)
+    assert.equal(commentsRes.data[0].replies[0].socket_id, '3127671')
     assert.equal(commentsRes.data[0].replies[0].user_name, 'Reltih Lieh')
-    assert.equal(commentsRes.data[0].replies[1].socket_id, 3127672)
+    assert.equal(commentsRes.data[0].replies[1].socket_id, '3127672')
     assert.equal(commentsRes.pagination.totalItems, undefined)
     assert.equal(commentsRes.pagination.totalPages, undefined)
     assert.equal(typeof commentsRes.pagination.hasNextPage, 'boolean')
 
     const repliesRes = await handlers.getComments({ bookRef: '27926', parentRef: '3086692', page: 1 })
     assert.equal(repliesRes.data.length, 1)
-    assert.equal(repliesRes.data[0].socket_id, 3127672)
+    assert.equal(repliesRes.data[0].socket_id, '3127672')
     assert.equal(repliesRes.data[0].content, 'Extra reply test')
     assert.equal(searchResult.pagination.hasNextPage, true)
 

@@ -34,19 +34,18 @@ export function parseChapterHtml(html: string, chapterRef: string): ScraperChapt
   const titleEl = document.querySelector('.title-top, .chapter-title, h2, h1')
   const chapterName = titleEl?.textContent?.trim() || `Chương ${chapterRef}`
 
-  let chapterId = parseInteger(chapterRef)
-  if (!chapterId) chapterId = 1
-
-  let bookId = 1
+  let chapterId = resolveChapterUrl(chapterRef)
+  let bookId = ''
   const canonicalLink = document.querySelector('link[rel="canonical"], meta[property="og:url"]')
   if (canonicalLink) {
     const href = canonicalLink.getAttribute('href') || canonicalLink.getAttribute('content') || ''
-    logger.info("canonicalLink", href);
+    const bMatch = href.match(/\/truyen\/([^\s/?#]+)/)
+    if (bMatch) bookId = bMatch[1]
 
-    const bMatch = href.match(/\/truyen\/(\d+)/)
-    if (bMatch) bookId = parseInt(bMatch[1], 10)
-    const cMatch = href.match(/\/c(\d+)/)
-    if (cMatch) chapterId = parseInt(cMatch[1], 10)
+    const pathMatch = href.match(/\/truyen\/[^/]+\/c[^/?#]+/)
+    if (pathMatch) {
+      chapterId = pathMatch[0]
+    }
   }
 
   const now = new Date().toISOString()
@@ -55,8 +54,7 @@ export function parseChapterHtml(html: string, chapterRef: string): ScraperChapt
     chapter_id: chapterId,
     chapter_name: chapterName,
     chapter_number: 1,
-    volume_id: 1,
-    book_id: bookId,
+    ...(bookId ? { book_id: bookId } : {}),
     content: paragraphs,
     total_index: paragraphs.length,
     status: 'ongoing',
@@ -65,26 +63,14 @@ export function parseChapterHtml(html: string, chapterRef: string): ScraperChapt
   }
 }
 
-export async function resolveChapterUrl(chapterRef: string): Promise<string> {
+export function resolveChapterUrl(chapterRef: string): string {
   const cleanRef = String(chapterRef).trim()
   if (cleanRef.startsWith('http://') || cleanRef.startsWith('https://')) return cleanRef
-  if (cleanRef.startsWith('/') && cleanRef.includes('-')) return cleanRef
-
-  const cleanId = cleanRef.replace(/^\/+/, '').replace(/^c/, '')
-  const directPath = `/c${cleanId}`
-
-  try {
-    const html = await doclnClient.fetchText(directPath)
-    if (html && !html.trim().startsWith('{')) return directPath
-  } catch {
-    // direct fetch failed
-  }
-
-  return directPath
+  return cleanRef.startsWith('/') ? cleanRef : `/${cleanRef}`
 }
 
 export async function fetchChapter(chapterRef: string): Promise<ScraperChapter> {
-  const targetPath = await resolveChapterUrl(chapterRef)
+  const targetPath = resolveChapterUrl(chapterRef)
   const html = await doclnClient.fetchText(targetPath)
   return parseChapterHtml(html, chapterRef)
 }
