@@ -4,6 +4,16 @@ const IMAGE_ACCEPT_HEADERS = {
   Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
 }
 
+export function resolveUrl(urlStr: string, baseUrl = 'https://docln.sbs'): string {
+  if (!urlStr) return ''
+  try {
+    return new URL(urlStr, baseUrl).toString()
+  } catch {
+    return urlStr
+  }
+}
+
+
 export function normalizeImageUrl(imageUrl: string): string {
   const normalizedUrl = imageUrl.trim()
   if (!normalizedUrl) return ''

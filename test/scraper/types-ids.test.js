@@ -6,11 +6,12 @@ const {
   parseBookDetailHtml,
   parseChapterHtml,
   parseCommentGroupHtml,
-  parseReviewsHtml
-} = require('../dist/index')
+  parseReviewsHtml,
+  resolveChapterUrl
+} = require('../../dist/index')
 
-module.exports = async function runStringIdsTests() {
-  console.log('[Test String IDs] Starting string ID parsing and omission unit tests...')
+module.exports = async function runTypesIdsTests() {
+  console.log('[Test Scraper Types & IDs] Starting string ID parsing and omission unit tests...')
 
   // 1. Test parseSearchResultsHtml
   const sampleSearchHtml = `
@@ -24,12 +25,12 @@ module.exports = async function runStringIdsTests() {
   `
   const searchRes = parseSearchResultsHtml(sampleSearchHtml, 1, 20)
   assert.equal(searchRes.items.length, 1)
-  assert.strictEqual(
+  assert.equal(
     searchRes.items[0].book_id,
     '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia',
-    'book_id in search results must be the full string slug'
+    'book_id in search results must be full string slug'
   )
-  assert.strictEqual(typeof searchRes.items[0].book_id, 'string')
+  assert.equal(typeof searchRes.items[0].book_id, 'string')
   assert.deepEqual(searchRes.items[0].authors, [{ author_name: 'Tác Giả A' }], 'authors should not have fake author_id')
 
   // 2. Test parseBookDetailHtml
@@ -64,7 +65,7 @@ module.exports = async function runStringIdsTests() {
     </div>
   `
   const detailRes = parseBookDetailHtml(sampleDetailHtml, '28094-slug')
-  assert.strictEqual(
+  assert.equal(
     detailRes.book_id,
     '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia'
   )
@@ -74,10 +75,10 @@ module.exports = async function runStringIdsTests() {
     { category_id: '1', category_name: 'Action' },
     { category_name: 'NoIdGenre' }
   ], 'category_id should be string or omitted when not present')
-  assert.strictEqual(detailRes.volumes[0].volume_id, '1001', 'volume_id should be string when data-id exists')
-  assert.strictEqual(detailRes.volumes[0].chapters[0].chapter_id, '/truyen/28094-slug/c12345-chuong-1', 'chapter_id should be full truyen path')
-  assert.strictEqual(detailRes.volumes[1].volume_id, undefined, 'volume_id should be omitted when data-id is missing')
-  assert.strictEqual(detailRes.volumes[1].chapters[0].chapter_id, '/c12346-chuong-2', 'chapter_id should be string path')
+  assert.equal(detailRes.volumes[0].volume_id, '1001', 'volume_id should be string when data-id exists')
+  assert.equal(detailRes.volumes[0].chapters[0].chapter_id, '/truyen/28094-slug/c12345-chuong-1', 'chapter_id should be full truyen path')
+  assert.equal(detailRes.volumes[1].volume_id, undefined, 'volume_id should be omitted when data-id is missing')
+  assert.equal(detailRes.volumes[1].chapters[0].chapter_id, '/c12346-chuong-2', 'chapter_id should be string path')
 
   // 3. Test parseChapterHtml
   const sampleChapterHtml = `
@@ -94,13 +95,12 @@ module.exports = async function runStringIdsTests() {
     </html>
   `
   const chapterRes = parseChapterHtml(sampleChapterHtml, '/truyen/28094-slug/c12345-chuong-1')
-  assert.strictEqual(chapterRes.chapter_id, '/truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/c12345-chuong-1', 'chapter_id in chapter must be full path')
-  assert.strictEqual(
+  assert.equal(chapterRes.chapter_id, '/truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/c12345-chuong-1')
+  assert.equal(
     chapterRes.book_id,
-    '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia',
-    'book_id in chapter must be full string slug'
+    '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia'
   )
-  assert.strictEqual(chapterRes.volume_id, undefined, 'volume_id in chapter should be omitted when not present')
+  assert.equal(chapterRes.volume_id, undefined)
 
   // 4. Test parseCommentGroupHtml
   const sampleCommentHtml = `
@@ -113,8 +113,8 @@ module.exports = async function runStringIdsTests() {
     </div>
   `
   const comments = parseCommentGroupHtml(sampleCommentHtml)
-  assert.strictEqual(comments[0].socket_id, '3086692', 'socket_id must be string')
-  assert.strictEqual(comments[0].user_id, '10395', 'user_id must be string')
+  assert.equal(comments[0].socket_id, '3086692')
+  assert.equal(comments[0].user_id, '10395')
 
   // 5. Test parseReviewsHtml
   const sampleReviewHtml = `
@@ -130,29 +130,13 @@ module.exports = async function runStringIdsTests() {
     </div>
   `
   const reviews = parseReviewsHtml(sampleReviewHtml)
-  assert.strictEqual(reviews[0].interaction_id, '1536', 'interaction_id must be string')
-  assert.strictEqual(reviews[0].user_id, '148873', 'user_id must be string')
-  assert.strictEqual(reviews[1].interaction_id, undefined, 'interaction_id should be omitted when missing from HTML')
+  assert.equal(reviews[0].interaction_id, '1536')
+  assert.equal(reviews[0].user_id, '148873')
+  assert.equal(reviews[1].interaction_id, undefined)
 
   // 6. Test resolveChapterUrl
-  const { resolveChapterUrl } = require('../dist/index')
-  assert.strictEqual(
-    resolveChapterUrl('/truyen/253-overlord/c10236-mo-dau'),
-    '/truyen/253-overlord/c10236-mo-dau',
-    'Full path must be preserved'
-  )
-  assert.strictEqual(
-    resolveChapterUrl('truyen/253-overlord/c10236-mo-dau'),
-    '/truyen/253-overlord/c10236-mo-dau',
-    'Leading slash normalized'
-  )
+  assert.equal(resolveChapterUrl('/truyen/253-overlord/c10236-mo-dau'), '/truyen/253-overlord/c10236-mo-dau')
+  assert.equal(resolveChapterUrl('truyen/253-overlord/c10236-mo-dau'), '/truyen/253-overlord/c10236-mo-dau')
 
-  console.log('[Test String IDs] All string ID parsing and omission unit tests passed! 🚀')
-}
-
-if (require.main === module) {
-  module.exports().catch(err => {
-    console.error(err)
-    process.exit(1)
-  })
+  console.log('[Test Scraper Types & IDs] All string ID unit tests passed! 🚀')
 }

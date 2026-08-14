@@ -2,7 +2,8 @@ import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
 import { saveBookSlug } from './bookDetail'
 import { BASE_URL, doclnClient } from './client'
-import { fetchImageAsDataUrl } from './image'
+import { fetchImageAsDataUrl, resolveUrl } from './image'
+
 
 export const HAKO_CATEGORIES: Array<{ label: string; value: string }> = [
   { label: 'Action', value: '1' },
@@ -77,14 +78,6 @@ function formatFilterParam(value: ScraperFilterValue | undefined): string {
   return String(value)
 }
 
-function resolveUrl(urlStr: string): string {
-  if (!urlStr) return ''
-  try {
-    return new URL(urlStr, BASE_URL).toString()
-  } catch {
-    return urlStr
-  }
-}
 
 export function parseCategoriesFromHtml(html: string): Array<{ label: string; value: string }> {
   try {

@@ -21,14 +21,10 @@ if (!runner) {
 
 async function main() {
   await runUtilitiesTests(root)
-  await require('./auth-livewire.test')()
-  require('./comment-scope.test')
-  await require('./comment-switch-reverse.test')()
-  await require('./auth-clear-session.test')()
-  await require('./auth-check-connection.test')()
-  await require('./comment-guest-session.test')()
-  await require('./string-ids.test')()
-  await require('./chapter-parsing.test')()
+  await require('./scraper/auth.test')()
+  await require('./scraper/chapter.test')()
+  await require('./scraper/comment.test')()
+  await require('./scraper/types-ids.test')()
   await require(runner)(root, manifest)
 }
 

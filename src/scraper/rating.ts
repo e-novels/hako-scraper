@@ -1,36 +1,10 @@
 import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
 import { resolveBookRatingUrl } from './bookDetail'
-import { BASE_URL, doclnClient } from './client'
-import { fetchImageAsDataUrl } from './image'
+import { parseHakoDate } from './chapter'
+import { doclnClient } from './client'
+import { fetchImageAsDataUrl, resolveUrl } from './image'
 
-function resolveUrl(urlStr: string): string {
-  if (!urlStr) return ''
-  try {
-    return new URL(urlStr, BASE_URL).toString()
-  } catch {
-    return urlStr
-  }
-}
-
-function parseHakoDate(dateStr: string): string {
-  if (!dateStr) return new Date().toISOString()
-  const trimmed = dateStr.trim()
-  const dmyMatch = trimmed.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/)
-  if (dmyMatch) {
-    const day = parseInt(dmyMatch[1], 10)
-    const month = parseInt(dmyMatch[2], 10) - 1
-    const year = parseInt(dmyMatch[3], 10)
-    const hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 0
-    const minute = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0
-    const second = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0
-    const d = new Date(Date.UTC(year, month, day, hour, minute, second))
-    if (!Number.isNaN(d.getTime())) return d.toISOString()
-  }
-  const parsed = Date.parse(trimmed)
-  if (!Number.isNaN(parsed)) return new Date(parsed).toISOString()
-  return new Date().toISOString()
-}
 
 export function parseReviewsHtml(html: string): ScraperReview[] {
   const { document } = parseHTML(html)

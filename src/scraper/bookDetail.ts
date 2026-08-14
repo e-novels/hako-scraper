@@ -1,7 +1,8 @@
 import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
-import { BASE_URL, doclnClient } from './client'
-import { fetchImageAsDataUrl } from './image'
+import { parseHakoDate, parseInteger } from './chapter'
+import { doclnClient } from './client'
+import { fetchImageAsDataUrl, resolveUrl } from './image'
 
 const bookSlugMap = new Map<string, string>()
 
@@ -20,16 +21,6 @@ export function saveBookSlug(bookId: number | string, href: string): void {
   }
 }
 
-function resolveUrl(urlStr: string): string {
-  if (!urlStr) return ''
-  try {
-    return new URL(urlStr, BASE_URL).toString()
-  } catch {
-    return urlStr
-  }
-}
-
-import { parseHakoDate, parseInteger } from './chapter'
 
 
 export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookDetail {

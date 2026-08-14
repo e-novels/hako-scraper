@@ -1,13 +1,10 @@
 'use strict'
 
 const assert = require('node:assert/strict')
-const path = require('node:path')
+const { parseChapterHtml, parseHakoDate, convertChapterImagesToBase64 } = require('../../dist/index')
 
-async function runChapterParsingTests() {
-  console.log('[Test Chapter Parsing] Starting chapter parsing unit tests...')
-  const dist = require(path.join(__dirname, '..', 'dist', 'index.js'))
-
-  const { parseChapterHtml, parseHakoDate, parseChapterNameFromDoc } = dist
+module.exports = async function runChapterTests() {
+  console.log('[Test Scraper Chapter] Starting chapter unit tests...')
 
   // 1. Test parseHakoDate
   const isoWithTz = parseHakoDate('2026-05-06T14:55:56+07:00')
@@ -74,7 +71,7 @@ async function runChapterParsingTests() {
   assert.equal(parsed.created_at, '2026-05-06T07:55:56.000Z', 'created_at must be parsed ISO date')
   assert.equal(parsed.updated_at, '2026-05-06T07:55:56.000Z', 'updated_at must be parsed ISO date')
   assert.equal(parsed.content.length, 3, 'content must have 3 paragraphs including image')
-  assert.equal(parsed.content[1], '@{https://i.hako.vip/lightnovel/illusts/u2-65912db4-17e4-4264-8622-13ee248d6fc6.jpg}', 'chapter image must use direct normalized URL without weserv proxy')
+  assert.equal(parsed.content[1], '@{https://i.hako.vip/lightnovel/illusts/u2-65912db4-17e4-4264-8622-13ee248d6fc6.jpg}', 'chapter image must use direct normalized URL')
 
   // 3. Test fallback layout without h4
   const fallbackHtml = `
@@ -95,8 +92,8 @@ async function runChapterParsingTests() {
   const parsedFallback = parseChapterHtml(fallbackHtml, 'c12345-hoi-1')
   assert.equal(parsedFallback.chapter_name, 'Hồi 1: Khởi Đầu', 'chapter_name fallback should work')
   assert.equal(parsedFallback.chapter_number, 1, 'chapter_number should fallback to 1')
+
   // 4. Test convertChapterImagesToBase64
-  const { convertChapterImagesToBase64 } = dist
   if (typeof convertChapterImagesToBase64 === 'function') {
     const inputParagraphs = [
       'Đoạn văn thứ nhất',
@@ -109,14 +106,5 @@ async function runChapterParsingTests() {
     assert.ok(converted[2].startsWith('@{'), 'Image entry should retain @{} wrapper on fallback')
   }
 
-  console.log('[Test Chapter Parsing] All chapter parsing tests passed successfully! 🚀')
-}
-
-module.exports = runChapterParsingTests
-
-if (require.main === module) {
-  runChapterParsingTests().catch(err => {
-    console.error(err)
-    process.exit(1)
-  })
+  console.log('[Test Scraper Chapter] All chapter unit tests passed! 🚀')
 }

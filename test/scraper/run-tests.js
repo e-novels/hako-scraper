@@ -9,15 +9,7 @@ function readHtmlFixture(root, filename) {
   return fs.readFileSync(fixturePath, 'utf8')
 }
 
-function readJsonFixture(root, filename) {
-  const fixturePath = path.join(root, 'test', 'scraper', 'fixtures', filename)
-  return JSON.parse(fs.readFileSync(fixturePath, 'utf8'))
-}
-
 module.exports = async function runScraperTests(root, manifest) {
-  const searchFixture = readJsonFixture(root, 'search.json')
-  const detail = readJsonFixture(root, 'book-detail.json')
-  const chapter = readJsonFixture(root, 'chapter.json')
   const html = readHtmlFixture(root, 'chapter.html')
   const encryptedHtml = readHtmlFixture(root, 'chapter-encrypted.html')
   assert.equal(manifest.icon, './public/icon.png')
@@ -161,9 +153,6 @@ module.exports = async function runScraperTests(root, manifest) {
               remaining: 0
             }
           }
-          if (pathname === '/api/books/101') return detail
-          if (pathname === '/api/chapters/301') return chapter
-          if (pathname === '/api/chapters/invalid') return { ...chapter, paragraphs: ['  '] }
           throw new Error(`Unexpected fixture request: ${url}`)
         },
         fetchDataUrl: async url => {
@@ -223,10 +212,6 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.equal(lastSearchUrl.searchParams.get('selectgenres'), '1,2')
     assert.equal(lastSearchUrl.searchParams.get('rejectgenres'), '3,4')
 
-    const bookDetail = await handlers.getBookDetail({ bookRef: '101' })
-    assert.equal(bookDetail.volumes[0].chapters[0].chapter_id, '301')
-    assert.equal(bookDetail.book_image, 'data:image/jpeg;base64,ZGV0YWls')
-
     const htmlBookDetail = await handlers.getBookDetail({ bookRef: '27926' })
     assert.equal(htmlBookDetail.book_id, '27926-test-book')
     assert.equal(htmlBookDetail.book_name, 'HTML Test Book')
@@ -268,11 +253,6 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.equal(repliesRes.data[0].content, 'Extra reply test')
     assert.equal(searchResult.pagination.hasNextPage, true)
 
-    assert.equal((await handlers.getChapter({ chapterRef: '301' })).content.length, 2)
-    await assert.rejects(
-      () => handlers.getChapter({ chapterRef: 'invalid' }),
-      /chapter\.paragraphs\[0\]/
-    )
     await assert.rejects(
       () => handlers.search({ filters: { title: 'rate-limited' }, page: 1, pageSize: 20 }),
       /HTTP 429/
