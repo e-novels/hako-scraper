@@ -115,6 +115,52 @@ await novel.scraper.register({
 
 Use the contracts in `src/types/scraper.d.ts` while mapping your source response. The template types named `Template*` are examples only; replace them with types matching the API or parsed HTML of your source.
 
+### Chapter Content: Rich Paragraph Syntax
+
+Each element in the `content` array returned by `getChapter` is normally plain text. Two special wrapper syntaxes let you embed images and translator/author notes. The reader also supports inline markdown-style text formatting.
+
+#### Images — `@{url}`
+
+Wrap an absolute HTTP(S) image URL with `@{…}`. Data URLs (`data:image/…;base64,…`) are also accepted.
+
+```ts
+content: [
+  'The hero drew his sword.',
+  '@{https://cdn.example.com/illustrations/ch1-sword.jpg}',
+  'The battle began.'
+]
+```
+
+The reader displays the image as a centered block element. URLs that are not valid HTTP(S) or data URLs are escaped and shown as plain text.
+
+#### Translator / Author Notes — `!{text}`
+
+Wrap the note text with `!{…}`:
+
+```ts
+content: [
+  'He invoked the ancient rite of Kaladria.',
+  '!{Kaladria is a fictional ritual referenced in Volume 2, Chapter 5.}',
+  'The sky darkened immediately.'
+]
+```
+
+The reader renders a compact, collapsible note bar. Users click the bar to reveal the note body underneath.
+
+#### Inline Text Formatting
+
+Regular text paragraphs support markdown-style inline formatting:
+
+| Syntax | Result |
+| --- | --- |
+| `**text**` | **bold** |
+| `*text*` | *italic* |
+| `***text***` | ***bold italic*** |
+| `__text__` or `_text_` | underline |
+| `~~text~~` | ~~strikethrough~~ |
+
+These markers are converted to HTML tags (`<b>`, `<i>`, `<u>`, `<s>`) at render time. They only apply inside normal text paragraphs — not inside `@{…}` or `!{…}` entries.
+
 ## Validate Untrusted Responses
 
 `fetchJson<T>()` only gives TypeScript a compile-time type; a live source can still omit fields or change data formats. The template calls the assertions in `validation.ts` immediately after every request, before running a mapper. Extend or replace these assertions alongside your source types.
@@ -257,6 +303,7 @@ Declare an optional capability in `contributes.scraper.capabilities`, then regis
 
 | Capability | Manifest declaration | Response |
 | --- | --- | --- |
+| `download` | Enables offline downloading for books and volumes on UI. | `ScraperBookDetailWithContent` |
 | `getFilterOptions` | A select/radio/multi-select field sets `optionsMethod: "getFilterOptions"`. | `{ options: [{ label, value }] }` with non-empty unique values. |
 | `suggest` | A text field sets `suggestMethod: "suggest"`. | Non-empty suggestion strings. |
 | `getComments` | Add only for a permitted reader-comment endpoint. | `{ data, pagination }` with `ScraperComment` records. |
@@ -267,6 +314,11 @@ await novel.scraper.register({
   async search(request) { /* required */ },
   async getBookDetail(request) { /* required */ },
   async getChapter(request) { /* required */ },
+  async download({ book_id, volume_id }) {
+    // If volume_id is supplied, return the book tree containing that volume's chapter contents
+    // Otherwise, return the complete book tree with chapter contents for all volumes
+    return downloadHandler({ book_id, volume_id })
+  },
   async getFilterOptions() {
     return { options: [{ label: 'Any', value: 'any' }] }
   },
@@ -275,6 +327,25 @@ await novel.scraper.register({
   }
 })
 ```
+
+### Implementing Download Capability (`download`)
+
+Scraper extensions have full control over the downloading process. The host grants a generous **10-minute timeout** for all download tasks:
+
+1. **UI Capability Gating**:
+   - The UI shows the Download Book and Download Volume buttons if `download` is declared in `contributes.scraper.capabilities`.
+   - The UI always allows single-chapter downloading via the standard `getChapter` method.
+2. **Rate Limiting & Delays**:
+   - Your extension can wait between requests (e.g. `await delay(200)`) to protect against anti-bot triggers and IP blocks.
+3. **Progress Reporting**:
+   - Call `await novel.progress.report({ message: 'Đang tải...', percentage: 50 })` to update the real-time download status on the UI and developer log.
+4. **Image Handling for Offline Storage**:
+   - Keep absolute image URLs as `@{https://cdn.example.com/pic.jpg}`.
+   - Or optionally fetch images via `novel.network.fetchDataUrl(url)` and embed them as Data URLs `@{data:image/jpeg;base64,...}` in `content` paragraphs.
+5. **Return Shape**:
+   - `download`: Return `ScraperBookDetailWithContent` (matching the host's native `bookDetailWithContent`, where `volumes[].chapters[]` contains `content: string[]`).
+   - The host automatically persists these chapters into the local database (SQLite/IndexedDB) under your extension ID.
+
 
 Preserve the opaque `bookRef`, `chapterRef`, `parentRef`, and `targetRef` values supplied to handlers. They belong to the source integration; do not convert them to application database IDs.
 

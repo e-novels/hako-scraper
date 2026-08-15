@@ -46,7 +46,7 @@ module.exports = async function runCommentTests() {
   const comments = parseCommentGroupHtml(sampleHtml, 100)
   assert.equal(comments.length, 2, 'Should parse 2 comments total')
   assert.equal(comments[0].chapter_id, undefined, 'Series comment should not have chapter_id')
-  assert.equal(comments[1].chapter_id, '/truyen/100/c500-chuong-1', 'Chapter comment should parse chapter_id as full path')
+  assert.equal(comments[1].chapter_id, 'truyen/100/c500-chuong-1', 'Chapter comment should parse chapter_id as slug path without leading slash')
   assert.equal(comments[1].chapter_name, 'Chương 01', 'Chapter comment should parse chapter_name')
 
   const seriesOnly = comments.filter(c => c.chapter_id === undefined)

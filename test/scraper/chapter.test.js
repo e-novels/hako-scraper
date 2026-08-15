@@ -63,9 +63,9 @@ module.exports = async function runChapterTests() {
 
   const parsed = parseChapterHtml(standardHtml, '/truyen/15056-kisu-nante-dekinai/c416377-chuong-ket')
   assert.equal(parsed.chapter_name, 'Chương kết', 'chapter_name must be extracted accurately from h4')
-  assert.equal(parsed.chapter_id, '/truyen/15056-kisu-nante-dekinai/c416377-chuong-ket', 'chapter_id must match path')
-  assert.equal(parsed.book_id, '15056-kisu-nante-dekinai', 'book_id must match novel slug')
-  assert.equal(parsed.volume_id, '23669', 'volume_id must be extracted from current volume link')
+  assert.equal(parsed.chapter_id, 'truyen/15056-kisu-nante-dekinai/c416377-chuong-ket', 'chapter_id must match slug path without leading slash')
+  assert.equal(parsed.book_id, 'truyen/15056-kisu-nante-dekinai', 'book_id must match novel slug')
+  assert.equal(parsed.volume_id, 'truyen/15056-kisu-nante-dekinai/3', 'volume_id must be book_id/volume_number')
   assert.equal(parsed.chapter_number, 4, 'chapter_number must be 4 based on index in sub_chap_list')
   assert.equal(parsed.total_index, 1562, 'total_index must be the word count when present')
   assert.equal(parsed.created_at, '2026-05-06T07:55:56.000Z', 'created_at must be parsed ISO date')

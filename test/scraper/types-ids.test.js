@@ -27,8 +27,8 @@ module.exports = async function runTypesIdsTests() {
   assert.equal(searchRes.items.length, 1)
   assert.equal(
     searchRes.items[0].book_id,
-    '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia',
-    'book_id in search results must be full string slug'
+    'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia',
+    'book_id in search results must be full string slug with truyen/ prefix'
   )
   assert.equal(typeof searchRes.items[0].book_id, 'string')
   assert.deepEqual(searchRes.items[0].authors, [{ author_name: 'Tác Giả A' }], 'authors should not have fake author_id')
@@ -67,7 +67,7 @@ module.exports = async function runTypesIdsTests() {
   const detailRes = parseBookDetailHtml(sampleDetailHtml, '28094-slug')
   assert.equal(
     detailRes.book_id,
-    '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia'
+    'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia'
   )
   assert.deepEqual(detailRes.authors, [{ author_name: 'Tác Giả A' }], 'detail authors should omit author_id')
   assert.deepEqual(detailRes.artists, [{ artist_name: 'Họa Sĩ B' }], 'detail artists should omit artist_id')
@@ -75,10 +75,18 @@ module.exports = async function runTypesIdsTests() {
     { category_id: '1', category_name: 'Action' },
     { category_name: 'NoIdGenre' }
   ], 'category_id should be string or omitted when not present')
-  assert.equal(detailRes.volumes[0].volume_id, '1001', 'volume_id should be string when data-id exists')
-  assert.equal(detailRes.volumes[0].chapters[0].chapter_id, '/truyen/28094-slug/c12345-chuong-1', 'chapter_id should be full truyen path')
-  assert.equal(detailRes.volumes[1].volume_id, undefined, 'volume_id should be omitted when data-id is missing')
-  assert.equal(detailRes.volumes[1].chapters[0].chapter_id, '/c12346-chuong-2', 'chapter_id should be string path')
+  assert.equal(
+    detailRes.volumes[0].volume_id,
+    'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/1',
+    'volume_id should be book_id/volume_number'
+  )
+  assert.equal(detailRes.volumes[0].chapters[0].chapter_id, 'truyen/28094-slug/c12345-chuong-1', 'chapter_id should be full truyen slug without leading slash')
+  assert.equal(
+    detailRes.volumes[1].volume_id,
+    'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/2',
+    'volume_id should be book_id/volume_number'
+  )
+  assert.equal(detailRes.volumes[1].chapters[0].chapter_id, 'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/c12346-chuong-2', 'chapter_id should be slug path')
 
   // 3. Test parseChapterHtml
   const sampleChapterHtml = `
@@ -95,12 +103,12 @@ module.exports = async function runTypesIdsTests() {
     </html>
   `
   const chapterRes = parseChapterHtml(sampleChapterHtml, '/truyen/28094-slug/c12345-chuong-1')
-  assert.equal(chapterRes.chapter_id, '/truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/c12345-chuong-1')
+  assert.equal(chapterRes.chapter_id, 'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/c12345-chuong-1')
   assert.equal(
     chapterRes.book_id,
-    '28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia'
+    'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia'
   )
-  assert.equal(chapterRes.volume_id, undefined)
+  assert.equal(chapterRes.volume_id, 'truyen/28094-ta-ro-rang-la-hoang-mao-sao-cac-nang-lai-goi-ta-la-dong-minh-cua-chinh-nghia/1')
 
   // 4. Test parseCommentGroupHtml
   const sampleCommentHtml = `
@@ -115,6 +123,7 @@ module.exports = async function runTypesIdsTests() {
   const comments = parseCommentGroupHtml(sampleCommentHtml)
   assert.equal(comments[0].socket_id, '3086692')
   assert.equal(comments[0].user_id, '10395')
+  assert.equal(comments[0].chapter_id, 'truyen/28094-slug/c558990-chuong-1')
 
   // 5. Test parseReviewsHtml
   const sampleReviewHtml = `

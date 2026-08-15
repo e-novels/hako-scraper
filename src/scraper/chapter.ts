@@ -96,17 +96,19 @@ export function parseChapterHtml(html: string, chapterRef: string): ScraperChapt
   const { document } = parseHTML(html)
   const chapterName = parseChapterNameFromDoc(document, chapterRef)
 
-  let chapterId = resolveChapterUrl(chapterRef)
+  let cleanChapterRef = String(chapterRef || '').trim().replace(/^\/+/, '')
+  let chapterId = cleanChapterRef
   let bookId = ''
+
   const canonicalLink = document.querySelector('link[rel="canonical"], meta[property="og:url"]')
   if (canonicalLink) {
     const href = canonicalLink.getAttribute('href') || canonicalLink.getAttribute('content') || ''
     const bMatch = href.match(/\/truyen\/([^\s/?#]+)/)
-    if (bMatch) bookId = bMatch[1]
+    if (bMatch) bookId = `truyen/${bMatch[1]}`
 
     const pathMatch = href.match(/\/truyen\/[^/]+\/c[^/?#]+/)
     if (pathMatch) {
-      chapterId = pathMatch[0]
+      chapterId = pathMatch[0].replace(/^\/+/, '')
     }
   }
 
@@ -114,34 +116,43 @@ export function parseChapterHtml(html: string, chapterRef: string): ScraperChapt
     const sidebarBookLink = document.querySelector('.rd_sidebar-name h5 a, .rd_sidebar-header a.img')
     const sidebarHref = sidebarBookLink?.getAttribute('href') || ''
     const sbMatch = sidebarHref.match(/\/truyen\/([^\s/?#]+)/)
-    if (sbMatch) bookId = sbMatch[1]
+    if (sbMatch) bookId = `truyen/${sbMatch[1]}`
   }
 
   if (!bookId && chapterRef) {
-    const refMatch = String(chapterRef).match(/\/truyen\/([^\s/?#]+)/)
-    if (refMatch) bookId = refMatch[1]
+    const refMatch = String(chapterRef).match(/\/truyen\/([^\s/?#]+)/) || String(chapterRef).match(/^truyen\/([^\s/?#]+)/)
+    if (refMatch) bookId = `truyen/${refMatch[1]}`
   }
 
-  // Volume ID
-  let volumeId: string | undefined
-  const currentVolEl = document.querySelector('#chap_list li.current a, .rd_sidebar-sub .current a')
-  if (currentVolEl) {
-    const href = currentVolEl.getAttribute('href') || ''
-    const vMatch = href.match(/\/t(\d+)/)
-    if (vMatch) volumeId = vMatch[1]
+  if (!chapterId.startsWith('truyen/') && bookId) {
+    const cMatch = chapterId.match(/c\d+[^\s/?#]*/)
+    if (cMatch) {
+      chapterId = `${bookId}/${cMatch[0]}`
+    }
   }
+
+  // Volume ID: calculate volume index and format as ${bookId}/${volumeNumber}
+  let volumeNumber = 1
+  const volLis = Array.from(document.querySelectorAll('#chap_list > li, .rd_sidebar-sub > li'))
+  if (volLis.length > 0) {
+    const curIdx = volLis.findIndex((li: any) => li.classList?.contains('current'))
+    if (curIdx >= 0) {
+      volumeNumber = curIdx + 1
+    }
+  }
+  const volumeId = bookId ? `${bookId}/${volumeNumber}` : undefined
 
   // Chapter Number
   let chapterNumber = 1
-  const subChaps = Array.from(document.querySelectorAll('#chap_list .sub-chap_list li a'))
+  const subChaps = Array.from(document.querySelectorAll('#chap_list .sub-chap_list li a, .rd_sidebar-sub .sub-chap_list li a'))
   if (subChaps.length > 0) {
     const chapSlug = chapterId.split('/').pop() || ''
     const idx = subChaps.findIndex((a: any) => {
-      const href = a.getAttribute('href') || ''
+      const href = (a.getAttribute('href') || '').replace(/^\/+/, '')
       return (
         (chapSlug && href.includes(chapSlug)) ||
-        (chapterId && href.endsWith(chapterId)) ||
-        (chapterRef && href.includes(chapterRef))
+        (chapterId && (href === chapterId || href.endsWith(chapterId))) ||
+        (cleanChapterRef && href.includes(cleanChapterRef))
       )
     })
     if (idx >= 0) {

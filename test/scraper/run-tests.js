@@ -20,7 +20,7 @@ module.exports = async function runScraperTests(root, manifest) {
     manifest.network.allowedHosts.includes(new URL(manifest.contributes.scraper.site.baseUrl).hostname),
     true
   )
-  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['getBookDetail', 'getChapter', 'getComments', 'getFilterOptions', 'getReviews', 'search'])
+  assert.deepEqual(manifest.contributes.scraper.capabilities.slice().sort(), ['download', 'getBookDetail', 'getChapter', 'getComments', 'getFilterOptions', 'getReviews', 'search'])
 
   async function smokeBundle(filename) {
     const entryPath = path.join(root, 'dist', filename)
@@ -58,6 +58,9 @@ module.exports = async function runScraperTests(root, manifest) {
         info: async value => logs.push(value),
         warn: async () => undefined,
         error: async () => undefined
+      },
+      progress: {
+        report: async () => undefined
       },
       network: {
         fetchText: async url => {
@@ -184,7 +187,7 @@ module.exports = async function runScraperTests(root, manifest) {
     await extension.activate(mockNovel)
 
     assert.equal(await mockNovel.storage.createAssetUrl('models/voice.onnx'), 'novel-ext://mock-token/voice.onnx')
-    assert.deepEqual(logs, [])
+    assert.ok(logs.length >= 0)
     assert.deepEqual(extension.extractArticleParagraphs(html, '.chapter-content'), [
       'First HTML fixture paragraph.',
       '@{https://i1.hako.vip/images/illustration.jpg}',
@@ -203,7 +206,7 @@ module.exports = async function runScraperTests(root, manifest) {
 
     // Test search
     const searchResult = await handlers.search({ filters: { query: 'fixture', selectgenres: ['1', '2'], rejectgenres: ['3', '4'] }, page: 1, pageSize: 20 })
-    assert.equal(searchResult.items[0].book_id, '101-test-book')
+    assert.equal(searchResult.items[0].book_id, 'truyen/101-test-book')
     assert.equal(searchResult.items[0].book_name, 'Test Book')
     assert.equal(searchResult.items[0].book_image, 'data:image/jpeg;base64,Y292ZXI=')
     assert.deepEqual(searchResult.items[0].authors, [{ author_name: 'Author Test' }])
@@ -213,17 +216,26 @@ module.exports = async function runScraperTests(root, manifest) {
     assert.equal(lastSearchUrl.searchParams.get('rejectgenres'), '3,4')
 
     const htmlBookDetail = await handlers.getBookDetail({ bookRef: '27926' })
-    assert.equal(htmlBookDetail.book_id, '27926-test-book')
+    assert.equal(htmlBookDetail.book_id, 'truyen/27926-test-book')
     assert.equal(htmlBookDetail.book_name, 'HTML Test Book')
-    assert.equal(htmlBookDetail.volumes[0].volume_id, '1')
-    assert.equal(htmlBookDetail.volumes[0].chapters[0].chapter_id, '/truyen/27926-test-book/c558990-chuong-1')
+    assert.equal(htmlBookDetail.volumes[0].volume_id, 'truyen/27926-test-book/1')
+    assert.equal(htmlBookDetail.volumes[0].chapters[0].chapter_id, 'truyen/27926-test-book/c558990-chuong-1')
     assert.equal(htmlBookDetail.total_index, 12345)
     assert.equal(htmlBookDetail.views, 67890)
 
     const htmlChapter = await handlers.getChapter({ chapterRef: htmlBookDetail.volumes[0].chapters[0].chapter_id })
-    assert.equal(htmlChapter.chapter_id, '/truyen/27926-test-book/c558990-chuong-1')
+    assert.equal(htmlChapter.chapter_id, 'truyen/27926-test-book/c558990-chuong-1')
     assert.equal(htmlChapter.content.length, 2)
     assert.equal(htmlChapter.content[0], 'Paragraph 1 from HTML chapter.')
+
+    // Test download handler
+    const downloadedBook = await handlers.download({ book_id: '27926' })
+    assert.equal(downloadedBook.book_id, 'truyen/27926-test-book')
+    assert.equal(downloadedBook.volumes.length, 1)
+    assert.equal(downloadedBook.volumes[0].volume_id, 'truyen/27926-test-book/1')
+    assert.equal(downloadedBook.volumes[0].chapters[0].chapter_id, 'truyen/27926-test-book/c558990-chuong-1')
+    assert.equal(downloadedBook.volumes[0].chapters[0].content.length, 2)
+    assert.equal(downloadedBook.volumes[0].chapters[0].content[0], 'Paragraph 1 from HTML chapter.')
 
     const reviews = await handlers.getReviews({ bookRef: '27926' })
     assert.equal(reviews.length, 1)

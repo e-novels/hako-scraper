@@ -153,11 +153,13 @@ export function parseSearchResultsHtml(html: string, page: number, pageSize: num
     const match = href.match(/\/truyen\/([^\s/?#]+)/)
     if (!match) continue
 
-    const bookId = match[1]
-    if (!bookId || seenIds.has(bookId)) continue
+    const slug = match[1]
+    const bookId = `truyen/${slug}`
+    if (!slug || seenIds.has(bookId)) continue
 
     seenIds.add(bookId)
     saveBookSlug(bookId, href)
+    saveBookSlug(slug, href)
 
     let bookImage = ''
     const imgEl = node.querySelector('.img-in-ratio, img')

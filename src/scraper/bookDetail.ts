@@ -11,13 +11,17 @@ export function saveBookSlug(bookId: number | string, href: string): void {
   const idStr = String(bookId).trim()
   const cleanHref = href.startsWith('/') ? href : `/${href}`
   bookSlugMap.set(idStr, cleanHref)
-  const numMatch = idStr.match(/^(\d+)/)
-  if (numMatch && numMatch[1] !== idStr) {
+  const withoutTruyen = idStr.replace(/^\/+/, '').replace(/^truyen\//, '')
+  bookSlugMap.set(withoutTruyen, cleanHref)
+  bookSlugMap.set(`truyen/${withoutTruyen}`, cleanHref)
+  const numMatch = withoutTruyen.match(/^(\d+)/)
+  if (numMatch) {
     bookSlugMap.set(numMatch[1], cleanHref)
   }
   const slugMatch = cleanHref.match(/\/truyen\/([^\s/?#]+)/)
   if (slugMatch && slugMatch[1]) {
     bookSlugMap.set(slugMatch[1], cleanHref)
+    bookSlugMap.set(`truyen/${slugMatch[1]}`, cleanHref)
   }
 }
 
@@ -31,16 +35,16 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
   if (canonicalLink) {
     const href = canonicalLink.getAttribute('href') || canonicalLink.getAttribute('content') || ''
     const match = href.match(/\/truyen\/([^\s/?#]+)/)
-    if (match) bookId = match[1]
+    if (match) bookId = `truyen/${match[1]}`
   }
   if (!bookId) {
-    const cleanRef = String(bookRef).trim().replace(/^\/+/, '').replace(/^truyen\//, '')
-    bookId = cleanRef
+    const cleanRef = String(bookRef).trim().replace(/^\/+/, '')
+    bookId = cleanRef.startsWith('truyen/') ? cleanRef : `truyen/${cleanRef}`
   }
 
   // Name
   const titleEl = document.querySelector('.series-name a, .series-name, h1.series-name, .series-title a')
-  const bookName = (titleEl?.textContent || titleEl?.getAttribute('title') || '').trim() || (bookId ? `Truyện ${bookId}` : 'Truyện')
+  const bookName = (titleEl?.textContent || titleEl?.getAttribute('title') || '').trim() || (bookId ? `Truyện ${bookId.replace(/^truyen\//, '')}` : 'Truyện')
 
   // Alternate titles
   const bookSubNames: string[] = []
@@ -199,10 +203,8 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
   volumeNodes.forEach((volNode, volIdx) => {
     const volTitleEl = volNode.querySelector('.sect-title, .volume-name, .sect-header')
     const volumeName = volTitleEl?.textContent?.trim() || `Tập ${volIdx + 1}`
-    const rawVolId = volNode.getAttribute('data-id') || volNode.getAttribute('id') || volNode.querySelector('.sect-header')?.getAttribute('id') || ''
-    const cleanVolId = rawVolId.replace(/^volume_/, '').trim()
-    const volumeId = cleanVolId ? cleanVolId : undefined
     const volumeNumber = volIdx + 1
+    const volumeId = `${bookId}/${volumeNumber}`
 
     const chapters: ScraperBookDetail['volumes'][number]['chapters'] = []
     const chapterEls = volNode.querySelectorAll('li')
@@ -218,8 +220,14 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
           chapHref = new URL(chapHref).pathname
         } catch {}
       }
-      if (!chapHref.startsWith('/')) {
-        chapHref = `/${chapHref}`
+      chapHref = chapHref.replace(/^\/+/, '')
+      if (!chapHref.startsWith('truyen/')) {
+        const cMatch = chapHref.match(/c\d+[^\s/?#]*/)
+        if (cMatch) {
+          chapHref = `${bookId}/${cMatch[0]}`
+        } else {
+          chapHref = `${bookId}/${chapHref}`
+        }
       }
 
       // Chapter number belongs strictly to its parent volume, starting from 1 per volume
@@ -245,7 +253,7 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
     const lastChapDate = chapters[chapters.length - 1]?.created_at || firstChapDate
 
     volumes.push({
-      ...(volumeId ? { volume_id: volumeId } : {}),
+      volume_id: volumeId,
       volume_name: volumeName,
       volume_number: volumeNumber,
       created_at: firstChapDate,
@@ -267,8 +275,14 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
             chapHref = new URL(chapHref).pathname
           } catch {}
         }
-        if (!chapHref.startsWith('/')) {
-          chapHref = `/${chapHref}`
+        chapHref = chapHref.replace(/^\/+/, '')
+        if (!chapHref.startsWith('truyen/')) {
+          const cMatch = chapHref.match(/c\d+[^\s/?#]*/)
+          if (cMatch) {
+            chapHref = `${bookId}/${cMatch[0]}`
+          } else {
+            chapHref = `${bookId}/${chapHref}`
+          }
         }
 
         const isoDate = new Date().toISOString()
@@ -283,6 +297,7 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
 
       const firstChapDate = chapters[0]?.created_at || new Date().toISOString()
       volumes.push({
+        volume_id: `${bookId}/1`,
         volume_name: 'Mặc định',
         volume_number: 1,
         created_at: firstChapDate,
@@ -321,14 +336,17 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
 export async function resolveBookUrl(bookRef: string): Promise<string> {
   const cleanRef = String(bookRef).trim()
   if (cleanRef.startsWith('http://') || cleanRef.startsWith('https://')) return cleanRef
-  if (cleanRef.startsWith('/') && cleanRef.includes('-')) return cleanRef
-  if (cleanRef.includes('-')) return `/truyen/${cleanRef.replace(/^\/+/, '').replace(/^truyen\//, '')}`
-
-  const cleanId = cleanRef.replace(/^\/+/, '').replace(/^truyen\//, '')
-
+  const withoutSlash = cleanRef.replace(/^\/+/, '')
+  if (bookSlugMap.has(withoutSlash)) {
+    return bookSlugMap.get(withoutSlash)!
+  }
+  const cleanId = withoutSlash.replace(/^truyen\//, '')
   if (bookSlugMap.has(cleanId)) {
-    const cached = bookSlugMap.get(cleanId)!
-    return cached
+    return bookSlugMap.get(cleanId)!
+  }
+
+  if (cleanId.includes('-')) {
+    return `/truyen/${cleanId}`
   }
 
   try {
@@ -340,6 +358,7 @@ export async function resolveBookUrl(bookRef: string): Promise<string> {
       const match = href.match(/\/truyen\/([^\s/?#]+)/)
       if (match && (match[1] === cleanId || match[1].startsWith(`${cleanId}-`))) {
         saveBookSlug(cleanId, href)
+        saveBookSlug(`truyen/${match[1]}`, href)
         saveBookSlug(match[1], href)
         return href
       }

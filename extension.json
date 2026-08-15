@@ -98,7 +98,8 @@
         "getChapter",
         "getFilterOptions",
         "getReviews",
-        "getComments"
+        "getComments",
+        "download"
       ],
       "search": {
         "pageSize": 20,

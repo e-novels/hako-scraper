@@ -61,7 +61,7 @@ function parseSingleCommentItem(itemEl: Element, _roomId: number | string = 0): 
         chapter_ref = new URL(chapter_ref).pathname
       } catch {}
     }
-    chapter_id = chapter_ref.startsWith('/') ? chapter_ref : `/${chapter_ref}`
+    chapter_id = chapter_ref.replace(/^\/+/, '')
   }
 
   const commentObj: ScraperComment = {

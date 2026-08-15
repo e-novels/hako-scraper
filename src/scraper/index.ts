@@ -6,6 +6,7 @@ import { fetchComments } from './comment'
 import { fetchReviews } from './rating'
 import { executeSearch, getFilterOptions } from './search'
 import { ensureAuthenticatedSession } from './auth'
+import { fetchDownloadContent } from './download'
 
 export { extractArticleParagraphs, extractNotesMap, splitTextWithNotes } from './html'
 export { decryptChapterContent } from './decrypt'
@@ -16,6 +17,7 @@ export { parseCommentGroupHtml, fetchComments, parseTotalCommentsFromHtml } from
 export { parseSearchResultsHtml, executeSearch, getFilterOptions } from './search'
 export { login, checkConnection, fetchCsrfToken as fetchAuthCsrfToken, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, ensureAuthenticatedSession } from './auth'
 export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './livewire'
+export { fetchDownloadContent } from './download'
 
 export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
   await novel.scraper.register({
@@ -42,6 +44,10 @@ export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
     async getComments(request) {
       await ensureAuthenticatedSession()
       return fetchComments(request)
+    },
+    async download(request) {
+      await ensureAuthenticatedSession()
+      return fetchDownloadContent(request)
     }
   })
 }

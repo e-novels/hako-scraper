@@ -23,7 +23,8 @@ const scraperCapabilities = new Set([
   'getFilterOptions',
   'suggest',
   'getComments',
-  'getReviews'
+  'getReviews',
+  'download'
 ])
 const filterTypes = new Set(['text', 'select', 'multi-select', 'radio', 'checkbox', 'number', 'date'])
 

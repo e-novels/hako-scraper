@@ -9,6 +9,7 @@ export { parseBookDetailHtml, fetchBookDetail, resolveBookUrl, resolveBookRating
 export { parseChapterHtml, fetchChapter, resolveChapterUrl, parseHakoDate, parseChapterNameFromDoc } from './scraper/chapter'
 export { parseReviewsHtml, fetchReviews } from './scraper/rating'
 export { parseCommentGroupHtml, fetchComments, parseTotalCommentsFromHtml } from './scraper/comment'
+export { fetchDownloadContent } from './scraper/download'
 export { login, checkConnection, checkConnectionAction, fetchUserProfileName, ensureAuthenticatedSession, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, saveSessionCookies, loadStoredSession } from './scraper/auth'
 export { doclnClient } from './scraper/client'
 export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './scraper/livewire'
