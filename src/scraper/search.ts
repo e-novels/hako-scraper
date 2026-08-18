@@ -2,7 +2,7 @@ import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
 import { saveBookSlug } from './bookDetail'
 import { BASE_URL, doclnClient } from './client'
-import { fetchImageAsDataUrl, resolveUrl } from './image'
+import { fetchImageAsDataUrl, proxyBookImages, resolveUrl } from './image'
 
 
 export const HAKO_CATEGORIES: Array<{ label: string; value: string }> = [
@@ -247,8 +247,6 @@ export async function executeSearch(
   const searchUrl = url.toString()
   const html = await doclnClient.fetchText(searchUrl)
   const response = parseSearchResultsHtml(html, page, pageSize)
-  await Promise.all(response.items.map(async (item) => {
-    if (item.book_image) item.book_image = await fetchImageAsDataUrl(item.book_image)
-  }))
+  response.items = await proxyBookImages(response.items, 8)
   return response
 }

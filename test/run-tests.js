@@ -25,6 +25,7 @@ async function main() {
   await require('./scraper/chapter.test')()
   await require('./scraper/comment.test')()
   await require('./scraper/types-ids.test')()
+  await require('./scraper/image.test')()
   await require('./scraper/download.test')()
   await require(runner)(root, manifest)
 }

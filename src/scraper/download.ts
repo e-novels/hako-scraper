@@ -94,7 +94,7 @@ export async function fetchDownloadContent(
       completedChapters++
 
       // Polite throttle between requests to avoid HTTP 429
-      await delay(150)
+      await delay(3000)
     }
 
     downloadedVolumes.push({
@@ -113,7 +113,7 @@ export async function fetchDownloadContent(
         message: `Hoàn tất tải truyện: ${bookDetail.book_name}`,
         percentage: 100
       })
-    } catch {}
+    } catch { }
   }
 
   await logger.info(`[Download] Successfully downloaded book '${bookDetail.book_name}'.`)

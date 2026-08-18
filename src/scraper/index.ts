@@ -18,6 +18,7 @@ export { parseSearchResultsHtml, executeSearch, getFilterOptions } from './searc
 export { login, checkConnection, fetchCsrfToken as fetchAuthCsrfToken, extractCsrfToken, parseConnectionState, loginAndCheckConnection, clearSession, ensureAuthenticatedSession } from './auth'
 export { ensureChapterCommentState, getLivewireSnapshot, parseToggleSetting } from './livewire'
 export { fetchDownloadContent } from './download'
+export { resolveUrl, normalizeImageUrl, toProxyImageUrl, wrapWeservUrl, toArchiveImageUrl, firstImage, fetchImageAsDataUrl, proxyBookImages } from './image'
 
 export async function activateScraper(novel: NovelExtensionApi): Promise<void> {
   await novel.scraper.register({

@@ -2,7 +2,7 @@ import { parseHTML } from 'linkedom'
 import { logger } from '../utilities'
 import { parseHakoDate, parseInteger } from './chapter'
 import { doclnClient } from './client'
-import { fetchImageAsDataUrl, resolveUrl } from './image'
+import { fetchImageAsDataUrl, firstImage, resolveUrl } from './image'
 
 const bookSlugMap = new Map<string, string>()
 
@@ -56,19 +56,21 @@ export function parseBookDetailHtml(html: string, bookRef: string): ScraperBookD
     }
   })
 
-  // Cover Image
-  let bookImage = ''
-  const coverEl = document.querySelector('.series-cover .img-in-ratio, .series-cover img, .img-in-ratio')
+  // Cover Image - Multi-layer fallback
+  const coverMatch = html.match(/class\s*=\s*["'][^"']*series-cover[^"']*["'][\s\S]{0,1400}?background-image\s*:\s*url\((['"]?)([^)'"\s]+)\1\)/i)
+  const coverEl = document.querySelector('.series-cover .img-in-ratio, .series-cover [style*="background-image"], .series-cover img, .img-in-ratio')
+  let coverUrl = ''
   if (coverEl) {
     const styleAttr = coverEl.getAttribute('style') || ''
-    const bgMatch = styleAttr.match(/url\(['"]?(.*?)['"]?\)/i)
-    if (bgMatch && bgMatch[1]) {
-      bookImage = bgMatch[1]
+    const bgMatch = styleAttr.match(/background-image\s*:\s*url\((['"]?)([^)'"\s]+)\1\)/i) || styleAttr.match(/url\(['"]?(.*?)['"]?\)/i)
+    if (bgMatch && (bgMatch[2] || bgMatch[1])) {
+      coverUrl = bgMatch[2] || bgMatch[1]
     } else {
-      bookImage = coverEl.getAttribute('src') || coverEl.getAttribute('data-src') || coverEl.getAttribute('data-bg') || ''
+      coverUrl = coverEl.getAttribute('data-src') || coverEl.getAttribute('src') || coverEl.getAttribute('data-bg') || ''
     }
   }
-  bookImage = resolveUrl(bookImage)
+  const rawCover = coverUrl || coverMatch?.[2] || ''
+  const bookImage = resolveUrl(rawCover) || firstImage(html.slice(0, 6000))
 
   // Information items (Authors, Artists, Status)
   const authors: Array<{ author_id?: string; author_name: string }> = []
