@@ -1,5 +1,5 @@
 import { parseHTML } from 'linkedom'
-import { logger, storage } from '../utilities'
+import { logger } from '../utilities'
 import { BASE_URL, doclnClient } from './client'
 import { decryptChapterContent } from './decrypt'
 import { extractArticleParagraphs, extractNotesMap } from './html'
@@ -213,14 +213,7 @@ const CHAPTER_IMAGE_ACCEPT_HEADERS = {
   Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
 }
 
-function getStorageKeyForImage(imageUrl: string): string {
-  const clean = imageUrl.split('?')[0].split('#')[0]
-  const filename = clean.split('/').pop() || 'image.jpg'
-  const safeFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_')
-  return `chapter_images/${safeFilename}`
-}
-
-export async function convertChapterImagesToBase64(paragraphs: string[]): Promise<string[]> {
+export async function convertChapterImagesToAssetUrl(paragraphs: string[]): Promise<string[]> {
   if (!Array.isArray(paragraphs) || paragraphs.length === 0) {
     return paragraphs
   }
@@ -228,26 +221,26 @@ export async function convertChapterImagesToBase64(paragraphs: string[]): Promis
     paragraphs.map(async paragraph => {
       if (typeof paragraph === 'string' && paragraph.startsWith('@{') && paragraph.endsWith('}')) {
         const imageUrl = paragraph.slice(2, -1).trim()
-        if (imageUrl && !imageUrl.startsWith('data:') && !imageUrl.startsWith('novel-ext:')) {
+        if (imageUrl && !imageUrl.startsWith('data:') && !imageUrl.startsWith('novel-ext:') && !imageUrl.startsWith('novel-media:')) {
           try {
-            const dataUrl = await doclnClient.fetchDataUrl(imageUrl, CHAPTER_IMAGE_ACCEPT_HEADERS)
-            if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
-              const storageKey = getStorageKeyForImage(imageUrl)
-              try {
-                await storage.set(storageKey, dataUrl)
-                const assetUrl = await storage.createAssetUrl(storageKey)
-                if (typeof assetUrl === 'string' && assetUrl.trim()) {
-                  return `@{${assetUrl}}`
-                }
-              } catch (err) {
-                await logger.warn(`[convertChapterImagesToBase64] Storage asset URL creation failed for ${imageUrl}:`, err)
-              }
-              if (dataUrl.length <= 95000) {
-                return `@{${dataUrl}}`
+            if (typeof doclnClient.fetchAssetUrl === 'function') {
+              const assetUrl = await doclnClient.fetchAssetUrl(imageUrl, CHAPTER_IMAGE_ACCEPT_HEADERS)
+              if (typeof assetUrl === 'string' && assetUrl.startsWith('novel-ext:')) {
+                return `@{${assetUrl}}`
               }
             }
           } catch (err) {
-            await logger.warn(`[convertChapterImagesToBase64] Failed to fetch image as data URL for ${imageUrl}:`, err)
+            await logger.warn(`[convertChapterImagesToAssetUrl] Failed to fetch image as asset URL for ${imageUrl}:`, err)
+          }
+
+          // Fallback to data URL if asset URL is unavailable
+          try {
+            const dataUrl = await doclnClient.fetchDataUrl(imageUrl, CHAPTER_IMAGE_ACCEPT_HEADERS)
+            if (typeof dataUrl === 'string' && dataUrl.startsWith('data:')) {
+              return `@{${dataUrl}}`
+            }
+          } catch (err) {
+            await logger.warn(`[convertChapterImagesToAssetUrl] Failed to fetch image as data URL for ${imageUrl}:`, err)
           }
         }
       }
@@ -256,11 +249,13 @@ export async function convertChapterImagesToBase64(paragraphs: string[]): Promis
   )
 }
 
+export const convertChapterImagesToBase64 = convertChapterImagesToAssetUrl
+
 export async function fetchChapter(chapterRef: string): Promise<ScraperChapter> {
   const targetPath = resolveChapterUrl(chapterRef)
   const html = await doclnClient.fetchText(targetPath)
   const chapter = parseChapterHtml(html, chapterRef)
-  chapter.content = await convertChapterImagesToBase64(chapter.content)
+  chapter.content = await convertChapterImagesToAssetUrl(chapter.content)
   return chapter
 }
 

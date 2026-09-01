@@ -66,6 +66,11 @@ export class DoclnClient {
     return network.fetchDataUrl(targetUrl, { headers, credentials: 'omit' })
   }
 
+  public async fetchAssetUrl(pathnameOrUrl: string, customHeaders?: Record<string, string>): Promise<string> {
+    const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, customHeaders)
+    return network.fetchAssetUrl(targetUrl, { headers, credentials: 'omit' })
+  }
+
   public async postForm<T = unknown>(pathnameOrUrl: string, formData: Record<string, string>, customHeaders?: Record<string, string>): Promise<T> {
     const { targetUrl, headers } = await this.prepareRequest(pathnameOrUrl, {
       'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',

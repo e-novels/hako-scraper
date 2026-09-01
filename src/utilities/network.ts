@@ -17,5 +17,8 @@ export const network = {
   },
   fetchDataUrl(url: string, options?: ExtensionFetchOptions): Promise<string> {
     return getNetwork().fetchDataUrl(url, options)
+  },
+  fetchAssetUrl(url: string, options?: ExtensionFetchOptions): Promise<string> {
+    return getNetwork().fetchAssetUrl(url, options)
   }
 }

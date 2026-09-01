@@ -20,6 +20,7 @@ interface ExtensionNetworkApi {
   fetchText(url: string, options?: ExtensionFetchOptions): Promise<string>
   fetchJson<T = unknown>(url: string, options?: ExtensionFetchOptions): Promise<T>
   fetchDataUrl(url: string, options?: ExtensionFetchOptions): Promise<string>
+  fetchAssetUrl(url: string, options?: ExtensionFetchOptions): Promise<string>
 }
 
 interface ExtensionStorageApi {
